@@ -8,6 +8,10 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 ## [Unreleased]
 
 ### Added
+- **GameSir G7 SE** (`3537:1010`, firmware descriptor 6.30): persistent L4/R4
+  gamepad remapping across the three Nexus profiles, staged Save with durable
+  originals and verified rollback, automatic cold-connection authentication,
+  and live trigger/stick readouts. Release returns the controller to games.
 - **GameSir Kaleid — lighting support.** The Xbox-licensed Kaleid doesn't answer
   the GameSir hidraw vendor protocol every other model here uses; that collection
   is present on the pad but vestigial. Deadband now reaches it the way the vendor's
