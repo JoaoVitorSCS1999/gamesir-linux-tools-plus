@@ -5,7 +5,7 @@ import App 1.0
 
 // GameSir G7 Pro 8K lighting + device settings (bank 0x20). Not the Cyclone's
 // keyframe RGB — a single ring effect + brightness, a 4-quadrant home indicator,
-// and power/dock settings. Writes apply immediately via the bridge.
+// and power/dock settings. Edits are staged for the Save bar, like every page.
 Item {
     id: page
 
@@ -79,6 +79,7 @@ Item {
     FitScroll {
         id: scroller
         anchors.fill: parent
+        anchors.bottomMargin: pbar.height + 10   // reserve the Save bar's space (no reflow)
         anchors.margins: 20
         content: fitBox
 
@@ -311,5 +312,12 @@ Item {
                 }
             }
         }
+    }
+
+    PendingBar {
+        id: pbar
+        anchors.left: parent.left; anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 20; anchors.rightMargin: 20; anchors.bottomMargin: 20
     }
 }

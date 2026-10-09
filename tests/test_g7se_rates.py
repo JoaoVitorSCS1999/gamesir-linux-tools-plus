@@ -227,17 +227,42 @@ class RateAppTests(unittest.TestCase):
                         return count
                     def read(bank, addr):
                         value = self.memory[bank, addr]
-                        if failure_kind == 'read' and bank == failed_bank and value == [2] and not failed[0]:
+                        # persistent: Save re-sends a mismatched write once, so a
+                        # one-off bad read-back recovers (see the test below)
+                        if failure_kind == 'read' and bank == failed_bank and value == [2]:
                             failed[0] = True
                             return [0]
                         return value
                     self.handle.write = write
                     self.save(read)
                     self.assertEqual({b: self.memory[b, se.POLL_RATE] for b in se.RATE_BANKS}, original)
-                    self.assertEqual([w[5] for w in self.wires], list(range(1, failed_bank+1)) + list(range(failed_bank, 0, -1)))
+                    retry = [failed_bank] if failure_kind == 'read' else []
+                    self.assertEqual([w[5] for w in self.wires],
+                                     list(range(1, failed_bank+1)) + retry + list(range(failed_bank, 0, -1)))
                     self.assertIn('original settings restored and verified', self.bridge._apply_status)
                     self.assertEqual(self.bridge.pendingCount, 1)
                     self.assertEqual({int(b): f['0x0036']['bytes'] for b, f in self.recovery[0]['profiles'].items()}, original)
+
+    def test_one_off_bad_readback_is_resent_and_saves(self):
+        original = {b: [b % 2] for b in se.RATE_BANKS}
+        self.memory.update({(b, se.POLL_RATE): v[:] for b, v in original.items()})
+        self.bridge._pending.clear()
+        self.bridge._loaded_profile = 1
+        self.load_rates()
+        self.wires.clear()
+        self.bridge.setPoll(2)
+        failed = [False]
+        def read(bank, addr):
+            value = self.memory[bank, addr]
+            if bank == 2 and value == [2] and not failed[0]:
+                failed[0] = True
+                return [0]
+            return value
+        self.save(read)
+        self.assertEqual({b: self.memory[b, se.POLL_RATE] for b in se.RATE_BANKS},
+                         {b: [2] for b in se.RATE_BANKS})
+        self.assertEqual([w[5] for w in self.wires], [1, 2, 2, 3, 4])
+        self.assertIn('Applied', self.bridge._apply_status)
 
     def test_missing_rate_reply_releases_queue_for_remaps(self):
         self.bridge._se_rate_scope = None

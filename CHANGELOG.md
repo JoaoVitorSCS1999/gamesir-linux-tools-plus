@@ -46,6 +46,17 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   affected.
 
 ### Changed
+- **Lighting waits for Save, like every other page.** Presets, colours, keyframes,
+  brightness, speed, power settings, and the G7 Pro 8K's ring and dock settings
+  used to be written to the controller the moment you touched them, with nothing in
+  the app showing a change had been made. They're now staged in the pending bar
+  (Discard puts the page back), and Save writes them through the same
+  backup / verify / roll-back path as the rest. The Lights page also highlights
+  the preset that's on the controller, and the separate "Apply colors" / "Apply
+  animation" buttons are gone. A preset, its speed and its brightness are one
+  write to the pad but count as separate changes in the bar.
+- Save sends a write once more if its read-back doesn't match before treating it
+  as a failure: these controllers occasionally drop a vendor write.
 - The "Configure controller / Release to games" session and its released-state
   overlay are now driven by whether a model is configured over a *claimed USB
   interface*, rather than by "is this a G7 Pro" — the Kaleid is the second such

@@ -332,10 +332,11 @@ everything it does is **reversible** and stays **on your machine**. The specific
   channel, the same settings the official app changes. They're ordinary config,
   not firmware — nothing here touches the bootloader.
 - **Nothing is written until you Save.** Edits wait in the pending bar; **Discard**
-  throws them away. On the Cyclone 2, G7 Pro 8K and Tarantula, Save first records
-  the current values in a recovery file, then writes, reads every change back, and
-  puts the old values back automatically if any write fails. (Macros and lighting
-  are the exceptions: they're written as you edit them, and the pages say so.)
+  throws them away. On the Cyclone 2, G7 Pro 8K, Tarantula and Kaleid, Save first
+  records the current values in a recovery file, then writes, reads every change
+  back, and puts the old values back automatically if any write fails. Lighting
+  goes through the same Save. (Macros are the exception: they're written as you
+  edit them, and the page says so.)
 - **Back up before you experiment.** **Backup / Restore → Export** snapshots all
   four profiles + lighting to a JSON file; **Restore** writes it back. Take one
   before you start changing things and you can always return to a known-good state.

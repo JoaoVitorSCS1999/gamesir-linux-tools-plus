@@ -4,8 +4,10 @@ import QtQuick.Layouts
 
 // The Lights tab: per-zone color editing wired live to the controller render,
 // effect presets, brightness/speed, a keyframe animation editor, and the global
-// power settings. All actions call through `bridge` into the existing gamesir_led
-// code. Editing a colour updates the render instantly; "Apply" pushes to the pad.
+// power settings. Every edit is STAGED like the other pages: the render and the
+// page show it at once, the Save bar counts it, and nothing reaches the pad until
+// Save. The lighting-profile pills and Play/Pause act immediately (they choose
+// what's shown, they don't change a setting), as does the confirmed Restore.
 Item {
     id: page
 
@@ -61,7 +63,10 @@ Item {
         var hex = colorToHex(c)
         bridge.setLight(sel, hex)
         frames[curFrame][sel] = hex
+        stageTimer.restart()
     }
+    // A colour drag fires many edits; stage the frames once it settles.
+    Timer { id: stageTimer; interval: 60; onTriggered: page.stageAnimation() }
     function loadFrame(i) {
         for (var z = 0; z < page.nZones; z++) bridge.setLight(z, frames[i][z])
         picker.setColor(bridge.lightColors[sel])
@@ -70,19 +75,22 @@ Item {
         if (frames.length >= 8) return
         var f = frames.slice(); f.push(bridge.lightColors.slice())
         frames = f; curFrame = frames.length - 1; loadFrame(curFrame)
+        stageAnimation()
     }
     function removeFrame() {
         if (frames.length <= 1) return
         var f = frames.slice(); f.splice(curFrame, 1); frames = f
         if (curFrame >= f.length) curFrame = f.length - 1
         loadFrame(curFrame)
+        stageAnimation()
     }
     function randomizeFrame() {
         var f = frames.slice(); var fr = f[curFrame].slice()
         for (var z = 0; z < page.nZones; z++) fr[z] = randomVivid()
         f[curFrame] = fr; frames = f; loadFrame(curFrame)
+        stageAnimation()
     }
-    function applyAnimation() {
+    function stageAnimation() {
         var rgb = []
         for (var i = 0; i < frames.length; i++) {
             var fr = []
@@ -116,6 +124,7 @@ Item {
     FitScroll {
         id: scroller
         anchors.fill: parent
+        anchors.bottomMargin: pbar.height + 10   // reserve the Save bar's space (no reflow)
         content: lightRow
         topPadding: 20; bottomPadding: 20; leftPadding: 20; rightPadding: 20
 
@@ -168,10 +177,18 @@ Item {
                         delegate: TextButton {
                             required property string modelData
                             label: modelData
+                            highlight: bridge.currentPreset === modelData
                             onClicked: bridge.applyPreset(modelData)
                         }
                     }
-                    TextButton { label: "Off"; onClicked: bridge.lightsOff() }
+                    TextButton { label: "Off"; highlight: bridge.currentPreset === "Off"
+                                 onClicked: bridge.lightsOff() }
+                }
+                Text {
+                    width: parent.width; wrapMode: Text.WordWrap
+                    visible: bridge.currentPreset === ""
+                    text: "Showing custom colours. Pick a preset to replace them."
+                    color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
             }
 
@@ -331,12 +348,6 @@ Item {
                     id: picker; width: parent.width
                     onEdited: page.onZoneEdited(c)
                 }
-                Row {
-                    width: parent.width; spacing: 8
-                    TextButton { label: "Apply colors"; highlight: true
-                                 onClicked: bridge.applyColors() }
-                    TextButton { label: "Off"; onClicked: bridge.lightsOff() }
-                }
             }
 
             Card {
@@ -375,11 +386,6 @@ Item {
                                  visible: bridge.lightingPlaybackSupported
                                  onClicked: page.togglePlay() }
                 }
-                TextButton {
-                    label: "Apply animation"; highlight: true
-                    width: parent.width
-                    onClicked: page.applyAnimation()
-                }
             }
 
             // Rewrites the keyframe records from the factory baseline. Destructive,
@@ -394,5 +400,12 @@ Item {
             Item { Layout.fillHeight: true }
         }
     }
+    }
+
+    PendingBar {
+        id: pbar
+        anchors.left: parent.left; anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 20; anchors.rightMargin: 20; anchors.bottomMargin: 20
     }
 }

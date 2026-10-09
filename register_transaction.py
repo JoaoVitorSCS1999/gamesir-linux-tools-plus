@@ -94,7 +94,13 @@ def apply(changes, read, write, directory, device, unverified=()):
             if (bank, addr) in unverified:
                 continue                        # pad reconnects; nothing to read
             if list(read(bank, addr, len(data))) != list(data):
-                raise OSError(f'read-back mismatch at 0x{addr:04x}')
+                # These pads drop the odd vendor write (a single-byte setting
+                # landing beside a heartbeat is the usual one): send it once
+                # more before calling it a failure.
+                if not write(bank, addr, data):
+                    raise OSError('write refused or device session changed')
+                if list(read(bank, addr, len(data))) != list(data):
+                    raise OSError(f'read-back mismatch at 0x{addr:04x}')
     except Exception as failure:
         restored = True
         for bank, addr, raw in reversed(attempted):

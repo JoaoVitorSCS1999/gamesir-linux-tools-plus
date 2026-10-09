@@ -67,17 +67,6 @@ def _led_async(fn, *args):
     threading.Thread(target=lambda: fn(*args), daemon=True).start()
 
 
-def _led_retry(fn, *args):
-    """Like _led_async, but send twice (spaced) for one-shot single-byte settings
-    the controller is prone to dropping when a command arrives back-to-back with
-    its heartbeat/queries (audio-reactive, pick-up-to-wake, sleep timeout)."""
-    if not _keyframe_lighting():
-        return
-    def run():
-        fn(*args); time.sleep(0.06); fn(*args)
-    threading.Thread(target=run, daemon=True).start()
-
-
 # Friendly key -> (ControllerProfile address-attribute, review-label) for the
 # scalar config fields the Sticks/Triggers/Vibration pages edit. Labels are the
 # same across models; the actual register ADDRESS is resolved per active profile
@@ -196,6 +185,17 @@ class GamesirBridge(QObject):
         self._sleep_label = '10 min'
         self._loaded_frames = []        # list of frames, each = 4 hex strings
 
+        # Lighting is STAGED like every other page: an edit becomes a pending
+        # entry keyed ('light', addr) against the bytes last read from the pad,
+        # and Save writes it through the same verified path. _light_loaded holds
+        # those read-back bytes (bank 0x20 addr -> list). _light_keys is the set
+        # of lighting entries pending at the last look, so anything that clears
+        # them (Discard, a profile reload, a device switch) puts the page back to
+        # what the pad holds -- see _on_pending_changed.
+        self._light_loaded = {}
+        self._light_keys = set()
+        self._led_rec_slot = None       # slot whose record _light_loaded holds
+
         # Per-profile config read-back + staged edits (Sticks/Triggers/Vibration).
         self._loaded_profile = None
         self._config_loading = None     # bank awaiting replies, or None
@@ -210,9 +210,10 @@ class GamesirBridge(QObject):
         self._diag_busy = False
         self._diagDone.connect(self._on_diag_done)
         self._backup_busy = False
+        self.pendingChanged.connect(self._on_pending_changed)
 
-        # 8K simple lighting (bank 0x20). Loaded once per connection; writes apply
-        # immediately (like the Cyclone LED), so we don't re-read/clobber after.
+        # 8K simple lighting (bank 0x20). Loaded once per connection and again
+        # after a Save; edits are staged like the Cyclone's (see _light_loaded).
         self._l8 = {}
         self._l8_loaded = False
         self._l8_loading = False
@@ -376,6 +377,11 @@ class GamesirBridge(QObject):
         unit whose registers we can't read -- G7/unrecognised/absent -- is never).
         Lighting resets to the same defaults __init__ seeds, so the render never
         shows one unit's colors/effect on another."""
+        # lighting read-back first, so the pending clear below can't "revert"
+        # the page to the previous unit's bytes
+        self._light_loaded = {}
+        self._light_keys = set()
+        self._led_rec_slot = None
         # config editor
         self._se_rates = {}
         self._se_rate_scope = None
@@ -462,33 +468,107 @@ class GamesirBridge(QObject):
             sleep = control.reg_result(led.LED_BANK, led.SLEEP_TIMEOUT)
             if audio is None or pickup is None or sleep is None:
                 return
-            self._audio_reactive = bool(audio[0])
-            self._pickup_wake = bool(pickup[0])
-            self._sleep_label = led.sleep_label(sleep[0])
+            self._light_loaded[led.AUDIO_REACTIVE] = [audio[0]]
+            self._light_loaded[led.PICKUP_WAKE] = [pickup[0]]
+            self._light_loaded[led.SLEEP_TIMEOUT] = [sleep[0]]
 
         self._led_loading = None
         record = led.stitch_record(slot, recvals, self._prof.read_chunk)
         if record is None:
             return
-        decoded = led.decode_record(record)
+        self._light_loaded[led.record_addr(slot)] = list(record)
+        self._led_rec_slot = slot
+        self._lighting_ui_from_staged()   # the pad's state plus anything staged
 
+    def _staged_light(self, addr):
+        """Bytes at bank-0x20 `addr` as the page should show them: what was read
+        from the pad, overlaid with a staged edit if there is one."""
+        base = self._light_loaded.get(addr)
+        if base is None:
+            return None
+        out = list(base)
+        r = self._pending.get(('light', addr))
+        if r is not None:
+            out[:len(r['data'])] = r['data']
+        return out
+
+    def _lighting_ui_from_staged(self):
+        """Rebuild the lighting page's state from the staged bytes and tell QML."""
+        if self._is_8k_lighting():
+            vals = {a: self._staged_light(a) for _b, a, _ln in led8k.read_fields()}
+            if all(v is not None for v in vals.values()):
+                self._l8 = self._decode_l8(vals)
+                self.light8kLoaded.emit()
+            return
+        slot = self._led_rec_slot
+        record = self._staged_light(led.record_addr(slot)) if slot is not None else None
+        if record is None:
+            return
+        decoded = led.decode_record(record)
         self._speed = decoded['speed']
         self._brightness = decoded['brightness']
         count = max(1, decoded['count'])
         self._loaded_frames = [[_hex(c) for c in fr] for fr in decoded['frames'][:count]]
         if self._loaded_frames:
             self._light_colors = list(self._loaded_frames[0])
+        if _lighting_feature('lighting_power'):
+            for addr, attr, conv in ((led.AUDIO_REACTIVE, '_audio_reactive', bool),
+                                     (led.PICKUP_WAKE, '_pickup_wake', bool),
+                                     (led.SLEEP_TIMEOUT, '_sleep_label', led.sleep_label)):
+                v = self._staged_light(addr)
+                if v is not None:
+                    setattr(self, attr, conv(v[0]))
         self.lightsChanged.emit()
         self.lightingLoaded.emit()
+
+    def _on_pending_changed(self):
+        """Lighting edits that left the pending list without being saved (Discard,
+        a profile reload, a device switch) take the page back to the pad's state.
+        _stage_light updates _light_keys itself, so a user's own edit -- including
+        one that lands back on the pad's value -- never triggers this."""
+        cur = {k for k in self._pending if isinstance(k, tuple) and k[:1] == ('light',)}
+        gone = self._light_keys - cur
+        self._light_keys = cur
+        if gone:
+            self._lighting_ui_from_staged()
+
+    def _drop_profile_pending(self):
+        """Discard staged PROFILE edits (a profile switch, reload or reset), but
+        keep staged lighting: it's global, not part of any profile."""
+        keep = {k: r for k, r in self._pending.items() if r.get('kind') == 'lighting'}
+        if len(keep) != len(self._pending):
+            self._pending = keep
+            self.pendingChanged.emit()
+
+    def _stage_light(self, addr, data, label, display):
+        """Stage bank-0x20 bytes at `addr` for Save. Lands back on the pad's value
+        = no change (the entry is dropped), so the badge counts real edits only."""
+        if not profiles.is_recognized():
+            return False
+        base = self._light_loaded.get(addr)
+        if base is None:
+            self._set_apply_status('Lighting is still being read from the controller; try again in a moment')
+            return False
+        data = list(data)
+        key = ('light', addr)
+        if base[:len(data)] == data:
+            self._pending.pop(key, None)
+        else:
+            self._pending[key] = {'addr': addr, 'bank': led.LED_BANK, 'data': data,
+                                  'label': label, 'display': display, 'kind': 'lighting'}
+        self._light_keys = {k for k in self._pending
+                            if isinstance(k, tuple) and k[:1] == ('light',)}
+        self.pendingChanged.emit()
+        return True
 
     def _is_8k_lighting(self):
         return (profiles.is_recognized()
                 and profiles.active().lighting_style == 'simple_8k')
 
     def _poll_lighting_8k(self):
-        """Load the 8K's bank-0x20 lighting/device settings once per connection.
-        Writes apply immediately, so we don't re-read afterwards (avoids clobbering
-        an edit with an in-flight read)."""
+        """Load the 8K's bank-0x20 lighting/device settings once per connection,
+        and again after a Save (which clears _l8_loaded). Staged edits overlay
+        the read-back, so a re-read never clobbers one."""
         if not self._is_8k_lighting() or state['driving'] != state['selected']:
             return
         if not self._l8_loaded and not self._l8_loading:
@@ -501,7 +581,14 @@ class GamesirBridge(QObject):
             return                                  # still waiting on replies
         self._l8_loading = False
         self._l8_loaded = True
-        self._l8 = {
+        for addr, v in vals.items():
+            self._light_loaded[addr] = list(v)
+        self._lighting_ui_from_staged()
+
+    @staticmethod
+    def _decode_l8(vals):
+        """The 8K lighting page's state from its bank-0x20 bytes."""
+        return {
             'mode':        led8k.mode_index(vals[led8k.MODE][0]),
             'bright':      vals[led8k.BRIGHT][0],
             # [hue degrees 0..359, saturation 0..100] per quadrant (hue is 16-bit BE)
@@ -511,19 +598,11 @@ class GamesirBridge(QObject):
             'dock_mode':   min(vals[led8k.DOCK_MODE][0], 1),
             'dock_bright': vals[led8k.DOCK_BRIGHT][0],
         }
-        self.light8kLoaded.emit()
 
-    def _write8k(self, addr, data):
-        """Immediate bank-0x20 write for an 8K lighting/device setting (threaded,
-        pinned to the current write-style + session so a switch can't misroute)."""
-        if not self._is_8k_lighting():
-            return
-        style = self._prof.write_style
-        gen = control.generation()
-        threading.Thread(
-            target=lambda: control.write_reg(led8k.BANK, addr, list(data),
-                                             write_style=style, gen=gen),
-            daemon=True).start()
+    def _stage8k(self, addr, data, label, display):
+        """Stage an 8K lighting/device setting for Save (see _stage_light)."""
+        if self._is_8k_lighting():
+            self._stage_light(addr, data, label, display)
 
     def _has_motion(self):
         return profiles.is_recognized() and self._prof.has_motion
@@ -751,8 +830,7 @@ class GamesirBridge(QObject):
                 and self._config_loading is None):
             self._loaded_profile = prof
             if self._pending:
-                self._pending = {}
-                self.pendingChanged.emit()
+                self._drop_profile_pending()
             if self._prof is profiles.G7_PRO:
                 reqs = g7pro.blob_requests(bank)
                 if self._g7_dock is None and not self._g7_dock_loading:
@@ -1437,57 +1515,102 @@ class GamesirBridge(QObject):
     def loadedFrames(self):
         return [list(f) for f in self._loaded_frames]
 
-    # --- lighting writes (all fire-and-forget to the active slot) -----------
-    def _zone_rgb(self):
-        return [_rgb(c) for c in self._light_colors]
+    # --- lighting edits: staged for Save, like every other page --------------
+    def _staged_record(self):
+        slot = self._led_rec_slot
+        if slot is None or not _keyframe_lighting():
+            return None
+        return self._staged_light(led.record_addr(slot))
 
-    @Slot()
-    def applyColors(self):
-        """Push the current per-zone colors as a solid palette at brightness."""
-        _led_async(led.set_lights, self._zone_rgb(), self._brightness)
+    def _stage_record(self, record):
+        slot = self._led_rec_slot
+        if slot is None or not _keyframe_lighting():
+            return False
+        return self._stage_light(led.record_addr(slot), record,
+                                 f'Lighting profile {slot + 1}', self._record_display(record))
+
+    @staticmethod
+    def _record_display(record):
+        bri = round(record[led.REC_BRIGHT_OFF] / 0x64 * 100)
+        if bri == 0:
+            return 'Off'
+        name = led.match_pattern(record)
+        what = name or ('custom colours' if record[0] == 1
+                        else f'custom animation ({record[0]} frames)')
+        return f'{what}, brightness {bri}%'
+
+    @Property(str, notify=lightsChanged)
+    def currentPreset(self):
+        """What the lighting page is showing, as staged: a preset name, 'Off', or
+        '' for custom colours/animation. Matches the record read back from the
+        pad, so it names what's on the controller until something is staged."""
+        rec = self._staged_record()
+        if rec is None:
+            return ''
+        if rec[led.REC_BRIGHT_OFF] == 0:
+            return 'Off'
+        return led.match_pattern(rec) or ''
 
     @Slot()
     def lightsOff(self):
-        _led_async(led.set_lights, self._zone_rgb(), 0)
+        rec = self._staged_record()
+        if rec is None:
+            return
+        rec[led.REC_BRIGHT_OFF] = 0
+        if self._stage_record(rec):
+            self._lighting_ui_from_staged()
 
     @Slot(str)
     def applyPreset(self, name):
-        """Apply a named effect (Flow/Rainbow/...) and reflect its own speed."""
-        rec = led.PATTERNS.get(name)
-        if rec is not None:
-            self._speed = led.speed_ui(rec[led.REC_SPEED_OFF])
-            self.lightsChanged.emit()
-        _led_async(led.set_pattern, name, self._brightness)
+        """Stage a named effect (Flow/Rainbow/...) with its own speed. Picking one
+        while the lights are off turns them back on at full brightness."""
+        bri = self._brightness or 100
+        rec = led.pattern_record(name, bri)
+        if rec is not None and self._stage_record(rec):
+            self._lighting_ui_from_staged()      # page shows the preset's frames
 
     @Slot(int)
     def setBrightness(self, v):
+        rec = self._staged_record()
+        if rec is None:
+            return
         self._brightness = max(0, min(100, int(v)))
+        rec[led.REC_BRIGHT_OFF] = round(self._brightness / 100 * 0x64)
+        self._stage_record(rec)
         self.lightsChanged.emit()
-        _led_async(led.set_brightness, self._brightness)
 
     @Slot(int)
     def setSpeed(self, v):
+        rec = self._staged_record()
+        if rec is None:
+            return
         self._speed = max(led.SPEED_MIN, min(led.SPEED_MAX, int(v)))
+        rec[led.REC_SPEED_OFF] = led.speed_ui(self._speed)
+        self._stage_record(rec)
         self.lightsChanged.emit()
-        _led_async(led.set_speed, self._speed)
 
     @Slot(bool)
     def setAudioReactive(self, on):
         if not _lighting_feature('lighting_power'):
             return              # the power block isn't mapped on every model
-        _led_retry(led.set_audio_reactive, bool(on))
+        self._audio_reactive = bool(on)
+        self._stage_light(led.AUDIO_REACTIVE, [1 if on else 0], 'Audio reactive',
+                          'On' if on else 'Off')
 
     @Slot(bool)
     def setPickupWake(self, on):
         if not _lighting_feature('lighting_power'):
             return              # the power block isn't mapped on every model
-        _led_retry(led.set_pickup_wake, bool(on))
+        self._pickup_wake = bool(on)
+        self._stage_light(led.PICKUP_WAKE, [1 if on else 0], 'Pick-up to wake',
+                          'On' if on else 'Off')
 
     @Slot(str)
     def setSleepTimeout(self, label):
         if not _lighting_feature('lighting_power'):
             return              # the power block isn't mapped on every model
-        _led_retry(led.set_sleep_timeout, led.sleep_raw(label))
+        self._sleep_label = label
+        self._stage_light(led.SLEEP_TIMEOUT, [led.sleep_raw(label)], 'Sleep timer', label)
 
     # ---------------------------------------------------- 8K simple lighting view
     @Property('QVariantList', constant=True)
@@ -1537,13 +1660,13 @@ class GamesirBridge(QObject):
     def setLight8kMode(self, idx):
         if 0 <= idx < len(led8k.MODES):
             self._l8['mode'] = idx
-            self._write8k(led8k.MODE, [led8k.MODES[idx][1]])
+            self._stage8k(led8k.MODE, [led8k.MODES[idx][1]], 'Ring effect', led8k.MODES[idx][0])
 
     @Slot(int)
     def setLight8kBrightness(self, v):
         v = max(0, min(100, int(v)))
         self._l8['bright'] = v
-        self._write8k(led8k.BRIGHT, [v])
+        self._stage8k(led8k.BRIGHT, [v], 'Ring brightness', f'{v}%')
 
     @Slot(int, int, int)
     def setLight8kQuadColor(self, i, hue, sat):
@@ -1568,37 +1691,34 @@ class GamesirBridge(QObject):
             q[i] = [hue, sat]
         self._l8['quads'] = q
         block = led8k.quad_block(hue, sat)
-        style = self._prof.write_style
-        gen = control.generation()
-        def run():
-            for i in idxs:
-                control.write_reg(led8k.BANK, led8k.HOME_Q[i], block,
-                                  write_style=style, gen=gen)
-                time.sleep(0.03)      # pace: dropped back-to-back writes otherwise
-        threading.Thread(target=run, daemon=True).start()
+        for i in idxs:
+            self._stage8k(led8k.HOME_Q[i], block, f'Home ring quadrant {i + 1}',
+                          f'hue {hue}°, saturation {sat}%')
 
     @Slot(bool)
     def setLight8kAuto(self, on):
         self._l8['auto'] = bool(on)
-        self._write8k(led8k.AUTO_ONOFF, [1 if on else 0])
+        self._stage8k(led8k.AUTO_ONOFF, [1 if on else 0], 'Auto on/off', 'On' if on else 'Off')
 
     @Slot(int)
     def setLight8kSleep(self, idx):
         if 0 <= idx < len(led8k.SLEEP_OPTIONS):
             self._l8['sleep'] = idx
-            self._write8k(led8k.SLEEP_TIMER, [led8k.SLEEP_OPTIONS[idx][1]])
+            self._stage8k(led8k.SLEEP_TIMER, [led8k.SLEEP_OPTIONS[idx][1]], 'Sleep timer',
+                          led8k.SLEEP_OPTIONS[idx][0])
 
     @Slot(int)
     def setLight8kDockMode(self, idx):
         if 0 <= idx < len(led8k.DOCK_MODES):
             self._l8['dock_mode'] = idx
-            self._write8k(led8k.DOCK_MODE, [led8k.DOCK_MODES[idx][1]])
+            self._stage8k(led8k.DOCK_MODE, [led8k.DOCK_MODES[idx][1]], 'Dock light',
+                          led8k.DOCK_MODES[idx][0])
 
     @Slot(int)
     def setLight8kDockBright(self, v):
         v = max(0, min(100, int(v)))
         self._l8['dock_bright'] = v
-        self._write8k(led8k.DOCK_BRIGHT, [v])
+        self._stage8k(led8k.DOCK_BRIGHT, [v], 'Dock brightness', f'{v}%')
 
     # ----------------------------------------------------------- motion (Aim/Tilt)
     def _mp(self):
@@ -1988,13 +2108,23 @@ class GamesirBridge(QObject):
     @Slot('QVariantList')
     def applyKeyframes(self, frames):
         """`frames` is a list of frames; each frame is one [r,g,b] per light, in
-        lightNames order. Writes them as a custom animation at the current speed/bri."""
+        lightNames order. Stages them as a custom animation at the current
+        speed/brightness (one frame = static colours). The page calls this as
+        the user edits, so colours are staged the moment they change."""
         norm = [[[int(c[0]), int(c[1]), int(c[2])] for c in fr] for fr in frames]
-        if not norm:
+        if not norm or self._staged_record() is None:
             return
-        slot = led._resolve_slot(None)
-        kf_cache.save(slot, norm, len(norm))
-        _led_async(led.set_keyframes, norm, self._speed, self._brightness, slot)
+        rec = led.keyframes_record(norm, self._speed, self._brightness or 100)
+        # the page's colours can't express a preset's exact palette, so editing
+        # a preset's colours turns it into custom frames -- unless nothing about
+        # the frames changed, in which case keep the preset bytes untouched
+        cur = self._staged_record()
+        if led.decode_record(cur)['frames'][:len(norm)] == led.decode_record(rec)['frames'][:len(norm)] \
+                and cur[0] == rec[0]:
+            return
+        if self._stage_record(rec):
+            kf_cache.save(self._led_rec_slot, norm, len(norm))
+            self.lightsChanged.emit()
 
     @Slot(bool, int)
     def setPlayback(self, playing, frame):
@@ -2027,6 +2157,13 @@ class GamesirBridge(QObject):
         if not self._is_8k_lighting() and not self._prof.factory_reset:
             return              # no captured baseline for this model; the
                                 # Cyclone's bytes are a different unit's state
+        # A confirmed, immediate action (like Reset profile): staged lighting
+        # edits would be written over the defaults on the next Save, so drop them.
+        light = [k for k in self._pending if isinstance(k, tuple) and k[:1] == ('light',)]
+        if light:
+            for k in light:
+                del self._pending[k]
+            self.pendingChanged.emit()
         if self._is_8k_lighting():
             style = self._prof.write_style
             gen = control.generation()
@@ -2037,7 +2174,10 @@ class GamesirBridge(QObject):
                 self._l8_loaded = False     # re-read so the page shows the defaults
             threading.Thread(target=run, daemon=True).start()
             return
-        _led_async(led.restore_factory)
+        def restore():
+            led.restore_factory()
+            self._loaded_led_slot = None    # re-read so the page shows the defaults
+        _led_async(restore)
 
     # ------------------------------------------------------------- mouse mode
     @Property(bool, constant=True)
@@ -2181,12 +2321,48 @@ class GamesirBridge(QObject):
 
     @Property(int, notify=pendingChanged)
     def pendingCount(self):
-        return len(self._pending)
+        return len(self._pending_items())
+
+    @Property(bool, notify=pendingChanged)
+    def pendingHasProfileEdits(self):
+        """Whether anything staged lives in a profile bank. Lighting is global,
+        so a lighting-only Save isn't "to Profile N"."""
+        return any(r.get('kind') != 'lighting' for r in self._pending.values())
 
     @Property('QVariantList', notify=pendingChanged)
     def pendingList(self):
-        return [r['label'] + ': ' + r['display']
-                for _key, r in sorted(self._pending.items(), key=lambda item: str(item[0]))]
+        return [label + ': ' + display for label, display in self._pending_items()]
+
+    def _pending_items(self):
+        """(label, display) per change as the user sees it. One pending entry is
+        one write, but a lighting record carries the effect, its speed and its
+        brightness together; each of those the user changed counts on its own."""
+        items = []
+        for _key, r in sorted(self._pending.items(), key=lambda item: str(item[0])):
+            parts = self._record_changes(r) if r.get('kind') == 'lighting' else None
+            items += parts if parts else [(r['label'], r['display'])]
+        return items
+
+    def _record_changes(self, r):
+        """Split a staged lighting RECORD into effect / speed / brightness changes
+        against the pad's read-back; None for anything that isn't a record."""
+        loaded = self._light_loaded.get(r['addr'])
+        data = r['data']
+        if (not _keyframe_lighting() or loaded is None or len(data) != led.LED_REC
+                or (r['addr'] - 1) % led.LED_REC):
+            return None
+        label = f'Lighting profile {(r["addr"] - 1) // led.LED_REC + 1}'
+        out = []
+        if data[:2] != loaded[:2] or data[4:] != loaded[4:]:
+            name = led.match_pattern(data)
+            out.append((label + ' effect', name or ('custom colours' if data[0] == 1
+                                                    else f'custom animation ({data[0]} frames)')))
+        if data[led.REC_SPEED_OFF] != loaded[led.REC_SPEED_OFF]:
+            out.append((label + ' speed', str(led.speed_ui(data[led.REC_SPEED_OFF]))))
+        if data[led.REC_BRIGHT_OFF] != loaded[led.REC_BRIGHT_OFF]:
+            bri = round(data[led.REC_BRIGHT_OFF] / 0x64 * 100)
+            out.append((label + ' brightness', 'Off' if bri == 0 else f'{bri}%'))
+        return out
 
     def _queue(self, addr, data, label, display, bank=None, key=None, kind=None):
         if not profiles.is_recognized():
@@ -2497,7 +2673,7 @@ class GamesirBridge(QObject):
         # Continuous Trigger batches (#22) while everything else took the path
         # below; two save paths drift. The G7 Pro keeps the path below -- its
         # writes go over its own enveloped channel with per-field quirks.
-        if self._prof.write_style in ('cyclone', 'g7se'):
+        if self._prof.write_style in ('cyclone', 'g7se', 'gip'):
             self._apply_transactional()
             return
         edit = state.get('edit_profile') or state.get('profile')
@@ -2553,7 +2729,7 @@ class GamesirBridge(QObject):
         if self._prof is profiles.G7_SE and not g7se.CONFIGURATION_VERIFIED:
             self._set_apply_status('Apply refused: G7 SE cold-start replies remain unverified')
             return
-        if (self._prof.write_style not in ('cyclone', 'g7se') or profiles.active() is not self._prof
+        if (self._prof.write_style not in ('cyclone', 'g7se', 'gip') or profiles.active() is not self._prof
                 or not profiles.is_recognized() or not state.get('connected')
                 or self._driving != state.get('driving')
                 or state.get('driving') != state.get('selected')):
@@ -2632,20 +2808,31 @@ class GamesirBridge(QObject):
 
         def read(bank, addr, length):
             select(bank)
-            control.request_regs([(bank, addr, length)])
+            # One reply carries at most read_chunk bytes, and a lighting record is
+            # 124: read it in the same pieces the lighting poll uses.
+            step = prof.read_chunk
+            parts = [(bank, addr + off, min(step, length - off))
+                     for off in range(0, length, step)]
+            control.request_regs(parts)
+            out = {}
             deadline = time.monotonic() + 3.0
-            while time.monotonic() < deadline:
+            while time.monotonic() < deadline and len(out) < len(parts):
                 check_session()
-                raw = control.reg_result(bank, addr)
-                if raw is not None:
-                    if prof is profiles.G7_SE:
-                        g7se.settings_write(1, bank, addr, raw)
-                    if addr in self._addr_to_continuous and length == 1:
-                        if cfg.continuous_trigger_state(raw) < 0:
-                            raise OSError(f'unknown Continuous Trigger flag at 0x{addr:04x}; write refused')
-                    return list(raw)
+                for _b, a, _ln in parts:
+                    if a not in out:
+                        raw = control.reg_result(bank, a)
+                        if raw is not None:
+                            out[a] = list(raw)
                 time.sleep(0.04)
-            raise OSError(f'no register reply at 0x{addr:04x}')
+            if len(out) < len(parts):
+                raise OSError(f'no register reply at 0x{addr:04x}')
+            raw = [b for _b, a, ln in parts for b in out[a][:ln]]
+            if prof is profiles.G7_SE:
+                g7se.settings_write(1, bank, addr, raw)   # refuses a record it can't decode
+            if (bank in prof.profile_banks and addr in self._addr_to_continuous
+                    and length == 1 and cfg.continuous_trigger_state(raw) < 0):
+                raise OSError(f'unknown Continuous Trigger flag at 0x{addr:04x}; write refused')
+            return raw
 
         def write(bank, addr, data):
             select(bank)
@@ -2658,14 +2845,21 @@ class GamesirBridge(QObject):
                 base = os.environ.get('XDG_DATA_HOME') or os.path.expanduser('~/.local/share')
                 # poll rate: written last, no read-back -- the 8K and Tarantula
                 # re-enumerate on this change (seen in USB captures and live)
-                unverified = ({(b, a) for b, a, _d in changes if a == prof.POLL_RATE}
+                # (the G7 SE doesn't re-enumerate, so its rate is read back)
+                unverified = ({(b, a) for b, a, _d in changes
+                               if a == prof.POLL_RATE and b in prof.profile_banks}
                               if prof.POLL_RATE is not None and prof is not profiles.G7_SE else set())
                 ok, message = register_transaction.apply(
                     changes, read, write, os.path.join(base, 'deadband', 'controller-backups'),
                     prof.name, unverified=unverified)
                 if ok:
                     for key, r in snapshot_pending.items():
-                        if r.get('kind') != 'motion':
+                        if r.get('kind') == 'lighting':
+                            # the pad now holds it: it's the new read-back
+                            base = self._light_loaded.get(r['addr'])
+                            if base is not None:
+                                base[:len(r['data'])] = r['data']
+                        elif r.get('kind') != 'motion':
                             self._fold(r['addr'], r['data'])
                         if self._pending.get(key) == r:
                             del self._pending[key]
@@ -2826,8 +3020,7 @@ class GamesirBridge(QObject):
         bank = self._prof.profile_bank(state['profile'])
         if bank is None:
             return
-        self._pending = {}
-        self.pendingChanged.emit()
+        self._drop_profile_pending()
 
         prof = self._prof
         style = prof.write_style            # capture: pin framing + session, so a
@@ -2853,8 +3046,7 @@ class GamesirBridge(QObject):
         banks = prof.profile_banks
         if not banks:
             return
-        self._pending = {}
-        self.pendingChanged.emit()
+        self._drop_profile_pending()
         self._backup_busy = True
         self.backupBusyChanged.emit()
         style = prof.write_style
@@ -2898,8 +3090,7 @@ class GamesirBridge(QObject):
             self._m_loading = False
             self.motionLoaded.emit()
             if self._pending:
-                self._pending = {}
-                self.pendingChanged.emit()
+                self._drop_profile_pending()
             self.statusChanged.emit()
         else:
             state['edit_profile'] = n

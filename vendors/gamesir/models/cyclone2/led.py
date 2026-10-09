@@ -99,21 +99,31 @@ def _write_slot(record, slot):
     write_reg(LED_BANK, 0x0000, [slot])   # select it
 
 
-def set_lights(colors, brightness=100, slot=None):
-    """Write a per-light palette and make it the active effect. `colors` is a
-    list of (r,g,b), one per light in index order; brightness 0..100 (0 = off)."""
-    slot = _resolve_slot(slot)
+def lights_record(colors, brightness=100):
+    """The 124-byte record set_lights writes: a per-light palette, static."""
     bri = max(0, min(0x64, round(brightness / 100 * 0x64)))
     frame = _render_frame(colors)
     palette = (frame * (LED_TRIPLETS // FRAME_TRIPLETS))[:LED_TRIPLETS]
     flat = []
     for r, g, b in palette:
         flat += [r & 0xFF, g & 0xFF, b & 0xFF]
-    _write_slot([0x01, 0x05, 0x14, bri] + flat, slot)
+    return [0x01, 0x05, 0x14, bri] + flat
+
+
+def set_lights(colors, brightness=100, slot=None):
+    """Write a per-light palette and make it the active effect. `colors` is a
+    list of (r,g,b), one per light in index order; brightness 0..100 (0 = off)."""
+    _write_slot(lights_record(colors, brightness), _resolve_slot(slot))
 
 
 def set_keyframes(frames, speed=10, brightness=100, slot=None):
-    """Write a user-built animation to the active slot and select it. `frames` is
+    """Write a user-built animation to the active slot and select it. See
+    keyframes_record for the format."""
+    _write_slot(keyframes_record(frames, speed, brightness), _resolve_slot(slot))
+
+
+def keyframes_record(frames, speed=10, brightness=100):
+    """The 124-byte record for a user-built animation. `frames` is
     1..8 frames, each a list of (r,g,b) per light in LIGHTS order
     [Left, Right, Profile, Home]. Stored as effect type 0x05 (the firmware's
     keyframe engine).
@@ -142,8 +152,7 @@ def set_keyframes(frames, speed=10, brightness=100, slot=None):
     # but zeroing keeps the slot honest for read-back and any off-by-one safety).
     flat += [0] * ((NUM_FRAMES - count) * FRAME_TRIPLETS * 3)
     bri = max(0, min(0x64, round(brightness / 100 * 0x64)))
-    _write_slot([count, KEYFRAME_TYPE, speed_ui(speed), bri] + flat,
-                _resolve_slot(slot))
+    return [count, KEYFRAME_TYPE, speed_ui(speed), bri] + flat
 
 
 # --- named effect patterns (captured from the official app) -----------------
@@ -225,15 +234,33 @@ PATTERNS = {
 PATTERN_NAMES = list(PATTERNS)
 
 
-def set_pattern(name, brightness=100, slot=None):
-    """Write a named effect pattern to the active slot and select it. brightness
-    0..100 overrides the record's stored level (byte 3)."""
+def pattern_record(name, brightness=100):
+    """The 124-byte record for a named effect, at `brightness` 0..100 (it
+    overrides the record's stored level, byte 3). None for an unknown name."""
     rec = PATTERNS.get(name)
     if rec is None:
-        return
+        return None
     rec = list(rec)
     rec[PATTERN_BRIGHT_IDX] = max(0, min(0x64, round(brightness / 100 * 0x64)))
-    _write_slot(rec, _resolve_slot(slot))
+    return rec
+
+
+def set_pattern(name, brightness=100, slot=None):
+    """Write a named effect pattern to the active slot and select it."""
+    rec = pattern_record(name, brightness)
+    if rec is not None:
+        _write_slot(rec, _resolve_slot(slot))
+
+
+def match_pattern(record):
+    """Name of the preset `record` holds, or None for anything custom. Speed and
+    brightness (bytes 2-3) are the user's to change, so they don't count."""
+    if record is None or len(record) < LED_REC:
+        return None
+    for name, rec in PATTERNS.items():
+        if record[:2] == rec[:2] and record[4:LED_REC] == rec[4:LED_REC]:
+            return name
+    return None
 
 
 def select_slot(n):
