@@ -1,1 +1,1 @@
-"""G7 SE descriptor 6.30: authenticated, remap-only configuration."""
+"""G7 SE descriptor 6.30: authenticated rear remapping and report-rate configuration."""

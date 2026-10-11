@@ -405,8 +405,8 @@ G7_PRO_OTHER = ControllerProfile(
     profile_banks=(),
 )
 
-# Separate identity with verified rear records and controller-wide report rate. Never inherit G7 Pro
-# settings, targets or dock requests. Configuration is gated in the SE protocol.
+# G7 SE: verified rear-button records and controller-wide report rate.
+# Configuration is gated by the tested firmware descriptor.
 G7_SE = ControllerProfile(
     name='GameSir G7 SE', short='G7 SE', usb_products=(0x1010,),
     wired_products=(0x1010,), write_style='g7se', input_style='evdev', transport='usb_vendor',

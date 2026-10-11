@@ -364,7 +364,7 @@ def read_controller():
             time.sleep(0.3)
             continue
 
-        # G7 SE: separately verified remap-only channel; no G7 Pro settings.
+        # G7 SE: verified rear-button remapping and report-rate configuration.
         if prof is profiles.G7_SE:
             state['connected'] = True
             if (g7se.CONFIGURATION_VERIFIED and state.get('config_wanted', True)
@@ -757,7 +757,7 @@ def transition_g7_identity(ctrl):
 
 
 def read_session_seusb(ctrl):
-    """Own only the SE remap channel; release xpad on every exit path."""
+    """Own the G7 SE configuration channel; release xpad on every exit path."""
     global _active_usb_handle
     handle = None
     startup = None

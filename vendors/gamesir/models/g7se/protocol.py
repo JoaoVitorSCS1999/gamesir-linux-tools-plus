@@ -1,4 +1,4 @@
-"""G7 SE rear remap and report-rate protocol, independent of G7 Pro.
+"""G7 SE rear-button remapping and report-rate protocol.
 
 Record semantics verified on descriptor 6.30 with Nexus captures and Linux
 roundtrips. Cold connections require a fresh verified GIP v1 handshake.

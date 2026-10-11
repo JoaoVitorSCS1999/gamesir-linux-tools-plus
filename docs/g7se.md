@@ -2,8 +2,7 @@
 
 Tested on Linux with USB identity **3537:1010**, firmware descriptor **6.30**
 (`bcdDevice=0630`), and Windows GameSir Nexus Legacy 1.5.3.0 packet captures.
-Other firmware remains input-only. G7 SE has its own controller profile and
-protocol modules; its identity is outside the G7 Pro allowlist.
+Other firmware remains input-only.
 
 ## Supported behavior
 
@@ -74,7 +73,7 @@ protocol references.
 | Rate codes | `00` = 250 Hz, `01` = 500 Hz, `02` = 1000 Hz |
 
 Targets are 1–4 for D-pad directions, 5/6 for LB/RB, 7/8 for LS/RS,
-15–18 for A/B/X/Y, and 22/23 for View/Menu. These differ from G7 Pro encodings.
+15–18 for A/B/X/Y, and 22/23 for View/Menu.
 Replies must match sequence, bank, offset and length, with complete payloads.
 Report-rate writes are read back and verified in every bank. Unlike the 8K and
 Tarantula paths, G7 SE rate writes do not skip verification or assume a reconnect.
