@@ -10,6 +10,7 @@ Item {
     id: root
     property string label: ""
     property var model: []               // list of display strings
+    property string placeholderText: "—"
     property int currentIndex: 0
     signal activated(int index)
 
@@ -35,7 +36,7 @@ Item {
             }
             Text {
                 text: (root.currentIndex >= 0 && root.currentIndex < root.model.length)
-                      ? root.model[root.currentIndex] : "—"
+                      ? root.model[root.currentIndex] : root.placeholderText
                 color: Theme.text
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                 font.weight: Font.DemiBold

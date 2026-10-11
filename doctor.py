@@ -532,7 +532,7 @@ def collect():
                 meta = dev.get('usb') or {}
                 node = '/dev/bus/usb/%03d/%03d' % (meta.get('bus', 0), meta.get('address', 0))
                 rep['g7se_devices'].append({
-                    'pid': dev['pid'], 'identity': 'G7 SE (rear-button remapping)',
+                    'pid': dev['pid'], 'identity': 'G7 SE (rear remaps and report rate)',
                     'product': dev.get('product', ''), 'port': dev['port'],
                     'bcd': dev.get('bcd'), 'node': node,
                     'access': os.access(node, os.R_OK | os.W_OK),
@@ -541,7 +541,7 @@ def collect():
                 supported = dev.get('bcd') == 0x0630
                 rep['verdict'].append(
                     'G7 SE (3537:1010) found. ' + (
-                    'L4/R4 gamepad remapping is verified on descriptor 6.30. '
+                    'L4/R4 remapping and 250/500/1000 Hz rate settings are verified on descriptor 6.30. '
                     'Configuration uses native USB with a fresh Xbox authentication '
                     'exchange when needed (requires OpenSSL). Release to games afterward.'
                     if supported else 'This firmware is input-only; configuration was '

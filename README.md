@@ -98,6 +98,11 @@ can't positively identify. Fork it and customize it however you like.
 > **Royal2** (`1032`/`1033`, added by its owner [@kakxem](https://github.com/kakxem)),
 > **Championship** (`10b7` wired, `10b9` dongle, verified by its owner) and **Aimlabs** (`10c5`/`10c6`, recognised from a user report).
 >
+> The **G7 SE** (`3537:1010`, firmware descriptor 6.30) supports L4/R4 gamepad
+> remapping in three profiles and controller-wide 250/500/1000 Hz report-rate
+> settings, with staged Save, verified readback and rollback. See
+> [G7 SE support](docs/g7se.md).
+>
 > The **Tarantula Pro 8K** is configured in its PC mode, `3537:103d`: rebinds for all
 > nine extra buttons (L4, R4, C1–C4, T1–T3), macros, sticks, triggers, gyro and
 > poll rate. Lighting isn't supported yet. If it shows up as `3537:103c` instead, it

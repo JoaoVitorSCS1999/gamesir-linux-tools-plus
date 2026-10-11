@@ -6,6 +6,9 @@ and hashes identify the original local captures; raw captures are not required t
 
 - `g7se-0630-nexus.json`: short reads, target writes, rear records and readbacks.
 - `g7se-0630-linux-roundtrip.json`: complete record remap, Default and restoration.
+- `g7se-0630-rates.json`: captured 250/500/1000 Hz writes and acknowledgements
+  across all four banks, plus covering read replies after reconnect. These
+  verify configured values, not physical polling frequency.
 - `g7se-0630-auth.json`: authentication framing, reconstructed handshake messages
   and controller chunk acknowledgements. The device certificate is replaced in
   both packets and messages by a generated test-only RSA public key and zero
@@ -19,6 +22,6 @@ and hashes identify the original local captures; raw captures are not required t
   from the verified fresh authentication path.
 
 Historical fixtures include the readable fourth bank. Nexus exposes three
-editable profiles, so tests explicitly require production writes to bank 4 to
-be refused. Device backups, full local diagnostics and Windows vendor bundles
+editable remap profiles, so tests require rear-record writes to bank 4 to be
+refused. Its one-byte report-rate field is the sole allowed bank-4 write. Device backups, full local diagnostics and Windows vendor bundles
 are excluded from the upstream change.

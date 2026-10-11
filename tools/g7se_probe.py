@@ -1176,6 +1176,12 @@ def main():
     parser.add_argument('--sysfs', help='Exact USB sysfs device path (required if multiple units)')
     parser.add_argument('--output', required=True, help='JSON diagnostic artifact')
     modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--rate-roundtrip', action='store_true',
+                       help='Save all three report rates through the app; verify profiles and restore originals')
+    modes.add_argument('--verify-rate-reconnect', metavar='ROUNDTRIP_JSON',
+                       help='After unplug/reconnect, verify all original profile bytes; read-only')
+    modes.add_argument('--restore-rate-originals', metavar='ROUNDTRIP_JSON',
+                       help='Restore only the four original rate bytes from a rate-roundtrip baseline')
     modes.add_argument('--physical-inputs', metavar='PREPARATION_JSON',
                        help='Observe released xpad input before/after physical reconnect; no USB requests')
     modes.add_argument('--physical-after-reconnect', metavar='PREPARATION_JSON',
@@ -1227,6 +1233,13 @@ def main():
         if (report['before']['idVendor'], report['before']['idProduct'],
                 report['before']['bcdDevice']) != ('3537', '1010', '0630'):
             raise UsbTransportError('Probe is limited to 3537:1010 descriptor 6.30')
+        if args.rate_roundtrip or args.verify_rate_reconnect or args.restore_rate_originals:
+            from tools.g7se_rates import run
+            success = run(roots[0], args.output,
+                          previous=args.verify_rate_reconnect or args.restore_rate_originals,
+                          restore_only=bool(args.restore_rate_originals))
+            print('Rate validation:', 'PASS' if success else 'FAIL', 'Evidence:', args.output)
+            return 0 if success else 2
         session = Session(roots[0], report)
         if args.restore_captured_originals:
             report['mode'] = 'restore-two-durable-original-records'
@@ -1280,6 +1293,9 @@ def main():
             if success else 'No repeatable configuration reads; remapping disabled'
             if sent else 'USB access failed before requests; protocol discovery blocked')
     except Exception as exc:
+        if args.rate_roundtrip or args.verify_rate_reconnect or args.restore_rate_originals:
+            print('Rate validation failed:', str(exc))
+            return 2
         report['error'] = str(exc)
     Path(args.output).write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({k: v for k, v in report.items() if k not in ('before', 'after', 'channels')}, indent=2))

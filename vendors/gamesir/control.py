@@ -236,7 +236,7 @@ def write_reg(bank, addr, data, write_style=None, gen=None):
         with _wseq_lock, _se_seq_lock:
             sequence = _next_se_sequence()
             try:
-                request = g7se.remap_write(sequence, bank, addr, data)
+                request = g7se.settings_write(sequence, bank, addr, data)
             except ValueError:
                 return False
             return send_cmd(*request, gen=gen, padded=False)
@@ -430,11 +430,29 @@ def request_regs(reqs):
     so a caller can tell fresh values from stale ones."""
     with _read_lock:
         for bank, addr, length in reqs:
-            if profiles.active() is profiles.G7_SE and (bank not in g7se.PROFILE_BANKS
-                    or addr not in dict(g7se.REMAP_SLOTS).values() or length != 8):
+            if profiles.active() is profiles.G7_SE and not g7se.allowed_setting_read(bank, addr, length):
                 continue
             _read_results.pop((bank, addr), None)
             _read_q.append((bank, addr, length))
+
+
+def cancel_se_rate_reads():
+    """Retire optional rate discovery before Save or after its bounded timeout.
+
+    A missing rate response must not starve remap reads in the shared queue.
+    An abandoned reply cannot match a subsequent request's sequence.
+    """
+    global _inflight
+    if profiles.active() is not profiles.G7_SE:
+        return
+    with _read_lock:
+        def rate(cmd):
+            return cmd[0] in g7se.RATE_BANKS and cmd[1:] == (g7se.POLL_RATE, 1)
+        keep = [cmd for cmd in _read_q if not rate(cmd)]
+        _read_q.clear()
+        _read_q.extend(keep)
+        if _inflight is not None and rate(_inflight['cmd']):
+            _inflight = None
 
 
 def reg_result(bank, addr):

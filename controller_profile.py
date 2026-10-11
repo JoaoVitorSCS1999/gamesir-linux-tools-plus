@@ -405,12 +405,13 @@ G7_PRO_OTHER = ControllerProfile(
     profile_banks=(),
 )
 
-# Separate identity with verified rear-record semantics. Never inherit G7 Pro
+# Separate identity with verified rear records and controller-wide report rate. Never inherit G7 Pro
 # settings, targets or dock requests. Configuration is gated in the SE protocol.
 G7_SE = ControllerProfile(
     name='GameSir G7 SE', short='G7 SE', usb_products=(0x1010,),
     wired_products=(0x1010,), write_style='g7se', input_style='evdev', transport='usb_vendor',
     software_profile_switch=False,
+    POLL_RATE=_se.POLL_RATE, POLL_RATES=_se.POLL_RATES,
     profile_banks=_se.PROFILE_BANKS, REMAP_TARGETS=_se.GAMEPAD_TARGETS,
     REMAP_SLOTS=_se.REMAP_SLOTS, supports_hair_thresholds=False,
 )

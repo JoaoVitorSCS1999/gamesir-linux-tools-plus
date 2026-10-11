@@ -1,8 +1,8 @@
-"""G7 SE remap-only protocol, deliberately independent of G7 Pro.
+"""G7 SE rear remap and report-rate protocol, independent of G7 Pro.
 
 Record semantics verified on descriptor 6.30 with Nexus captures and Linux
 roundtrips. Cold connections require a fresh verified GIP v1 handshake.
-Only complete L4/R4 records and fourteen captured targets are defined here.
+Writes allow only complete L4/R4 records and the captured report-rate byte.
 """
 
 VID = 0x3537
@@ -11,6 +11,9 @@ TESTED_DESCRIPTOR = 0x0630
 CONFIGURATION_VERIFIED = True  # Firmware 0630: authenticated reads and remap roundtrips.
 PROFILE_SIZE = 421
 PROFILE_BANKS = (1, 2, 3)  # Nexus exposes three editable profiles.
+RATE_BANKS = (1, 2, 3, 4)  # Nexus applies its controller-wide rate to all banks.
+POLL_RATE = 0x0036
+POLL_RATES = ('250 Hz', '500 Hz', '1000 Hz')
 REMAP_SLOTS = (('L4', 0x00ab), ('R4', 0x00c7))
 GAMEPAD_TARGETS = (('Dpad Up', 1), ('Dpad Down', 2), ('Dpad Left', 3),
                   ('Dpad Right', 4), ('LB', 5), ('RB', 6), ('LS', 7), ('RS', 8),
@@ -53,18 +56,43 @@ def allowed_app_request(request):
             return False
         sequence = request[2]
         if len(request) == 64 and request[3:5] == b'\x3c\x03':
-            return request == remap_write(sequence, request[5],
-                int.from_bytes(request[6:8], 'big'), request[9:17])
+            return request == settings_write(sequence, request[5],
+                int.from_bytes(request[6:8], 'big'), request[9:9 + request[8]])
         if len(request) == 9 and request[3:5] == b'\x05\x04':
-            if request[5] not in PROFILE_BANKS or request[8] != 8:
-                return False
-            if int.from_bytes(request[6:8], 'big') not in dict(REMAP_SLOTS).values():
+            if not allowed_setting_read(request[5], int.from_bytes(request[6:8], 'big'), request[8]):
                 return False
         elif request[3:] not in (b'\x02\xf2\x00', b'\x01\x0b'):
             return False
         return request == nexus_request(sequence, request[3], request[4:])
     except (ValueError, IndexError):
         return False
+
+
+def decode_rate(data):
+    data = bytes(data)
+    if len(data) != 1 or data[0] not in range(len(POLL_RATES)):
+        raise ValueError('Unknown G7 SE report-rate value; editing refused')
+    return data[0]
+
+
+def rate_write(sequence, bank, data):
+    data = bytes(data)
+    decode_rate(data)
+    if not 0 <= sequence <= 255 or bank not in RATE_BANKS:
+        raise ValueError('Unsupported G7 SE report-rate bank/sequence')
+    body = bytes((3, bank, 0, POLL_RATE, 1)) + data
+    return bytes((15, 0, sequence, 60)) + body.ljust(60, b'\0')
+
+
+def settings_write(sequence, bank, address, data):
+    if address == POLL_RATE:
+        return rate_write(sequence, bank, data)
+    return remap_write(sequence, bank, address, data)
+
+
+def allowed_setting_read(bank, address, length):
+    return ((bank in RATE_BANKS and address == POLL_RATE and length == 1)
+            or (bank in PROFILE_BANKS and address in dict(REMAP_SLOTS).values() and length == 8))
 
 
 def open_device(bus, address, sysfs):

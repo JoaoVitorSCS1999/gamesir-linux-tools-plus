@@ -176,7 +176,7 @@ class SeAppTests(unittest.TestCase):
         self.assertTrue(all(se.allowed_app_request(w) for w in self.wires))
 
     def test_strict_read_routing_and_no_unsupported_reads(self):
-        control.request_regs([(1, 0xab, 8), (0x20, 0, 55), (1, 0x36, 1)])
+        control.request_regs([(1, 0xab, 8), (0x20, 0, 55), (1, 0x36, 2)])
         control.pump_reads()
         wire = self.wires[-1]
         self.assertEqual(len(wire), 9)

@@ -9,7 +9,8 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ### Added
 - **GameSir G7 SE** (`3537:1010`, firmware descriptor 6.30): persistent L4/R4
-  gamepad remapping across the three Nexus profiles, staged Save with durable
+  gamepad remapping across the three Nexus profiles and controller-wide
+  250/500/1000 Hz report-rate settings, staged Save with durable
   originals and verified rollback, automatic cold-connection authentication,
   and live trigger/stick readouts. Release returns the controller to games.
 - **GameSir Kaleid — lighting support.** The Xbox-licensed Kaleid doesn't answer

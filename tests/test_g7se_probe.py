@@ -33,7 +33,8 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(prof.write_style, 'g7se')
         self.assertEqual(prof.REMAP_SLOTS, (('L4', 0xab), ('R4', 0xc7)))
         self.assertEqual(len(prof.REMAP_TARGETS), 14)
-        for value in (prof.read_fields(), prof.extras, prof.MACRO_SLOTS):
+        self.assertEqual(prof.read_fields(), [(se.POLL_RATE, 1)])
+        for value in (prof.extras, prof.MACRO_SLOTS):
             self.assertFalse(value)
 
     def test_prefer_configurable_device_over_se(self):
