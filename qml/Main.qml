@@ -31,7 +31,7 @@ Window {
     }
     // Tabs follow what the connected controller actually has, so a profile
     // without (say) mapped lighting or vibration motors doesn't get an empty page.
-    readonly property var controllerTabs: bridge.isG7Pro
+    readonly property var controllerTabs: bridge.remapOnly ? ["Rebinds"] : bridge.isG7Pro
         ? ["Rebinds", "Sticks"].concat(bridge.hasMotion ? ["Motion"] : [])
           .concat(["Triggers", "Vibration", "Device"])
           // A controller with no editable profile banks (the Kaleid: lighting is
@@ -46,17 +46,6 @@ Window {
           .concat(bridge.lightingStyle !== "none" ? ["Lights"] : [])
           .concat(bridge.hasMacros ? ["Macros"] : [])
     readonly property var mouseTabs: ["Buttons", "DPI", "Macros"]
-    // Staged poll-rate choice shown by the tab-row dropdown. Seeded from the
-    // profile's read-back config; configLoaded also fires on Discard, so a
-    // discarded change snaps the dropdown back too.
-    property int pollIndex: -1          // -1 = not read yet; the dropdown shows "—"
-    Connections {
-        target: bridge
-        function onConfigLoaded() {
-            var c = bridge.config
-            if (c.poll !== undefined) win.pollIndex = c.poll
-        }
-    }
     readonly property var tabs: activeDevice === "mouse" ? mouseTabs : controllerTabs
     // Card vertical-compression is global (only one page shows at a time); reset it
     // to full on every tab switch so the newly-shown page's FitScroll re-fits from
@@ -521,8 +510,8 @@ Window {
                 // Poll rate lives in the tab row rather than on a page: it's about
                 // how often the controller reports EVERY input, so no single tab
                 // owns it (it used to sit on Vibration, where nobody would look).
-                // It's stored PER PROFILE, so it sits beside the profile-driven
-                // tabs and follows the profile bar, and it's staged like any other
+                // G7 SE applies it across all profiles; other models store it per
+                // profile. It follows the profile bar and is staged like any other
                 // edit -- the pending bar picks it up from whichever tab is open.
                 Rectangle {
                     visible: pollDrop.visible
@@ -535,8 +524,10 @@ Window {
                     anchors.verticalCenter: parent.verticalCenter
                     label: "Poll rate"
                     model: bridge.pollRates
-                    currentIndex: win.pollIndex
-                    onActivated: (i) => { win.pollIndex = i; bridge.setPoll(i) }
+                    enabled: bridge.pollRateEditable
+                    placeholderText: bridge.pollRatePlaceholder
+                    currentIndex: bridge.pollRateIndex
+                    onActivated: (i) => bridge.setPoll(i)
                 }
             }
             Rectangle { anchors.bottom: parent.bottom; width: parent.width
@@ -1074,8 +1065,8 @@ Window {
                         }
 
                         Divider {}
-                        SectionHeader { text: "Backup & Restore" }
-                        BackupPanel { width: parent.width }
+                        SectionHeader { visible: !bridge.remapOnly; text: "Backup & Restore" }
+                        BackupPanel { visible: !bridge.remapOnly; width: parent.width }
 
 
                         Divider {}

@@ -28,6 +28,7 @@ from typing import Optional
 import vendors.gamesir.config as _cy
 from vendors.gamesir.models.g7pro import protocol as _g7
 from vendors.gamesir.models.kaleid import protocol as _kal
+from vendors.gamesir.models.g7se import protocol as _se
 
 
 # --- shared enums / block formats (identical across the vendor family) -------
@@ -404,6 +405,17 @@ G7_PRO_OTHER = ControllerProfile(
     profile_banks=(),
 )
 
+# G7 SE: verified rear-button records and controller-wide report rate.
+# Configuration is gated by the tested firmware descriptor.
+G7_SE = ControllerProfile(
+    name='GameSir G7 SE', short='G7 SE', usb_products=(0x1010,),
+    wired_products=(0x1010,), write_style='g7se', input_style='evdev', transport='usb_vendor',
+    software_profile_switch=False,
+    POLL_RATE=_se.POLL_RATE, POLL_RATES=_se.POLL_RATES,
+    profile_banks=_se.PROFILE_BANKS, REMAP_TARGETS=_se.GAMEPAD_TARGETS,
+    REMAP_SLOTS=_se.REMAP_SLOTS, supports_hair_thresholds=False,
+)
+
 # Compatibility name for code/tests that referred to the old misidentified G7.
 G7 = G7_PRO
 
@@ -707,7 +719,7 @@ KALEID_OTHER = ControllerProfile(
 )
 
 
-ALL = (CYCLONE, G7_PRO, G7_NATIVE, G7_PRO_OTHER, G7_8K, TARANTULA_PRO_8K,
+ALL = (CYCLONE, G7_PRO, G7_NATIVE, G7_PRO_OTHER, G7_SE, G7_8K, TARANTULA_PRO_8K,
        KALEID, KALEID_OTHER)
 DEFAULT = CYCLONE
 

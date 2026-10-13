@@ -5,16 +5,18 @@
 # Deadband — a Linux configuration app for controllers and mice
 
 A Linux GUI for gaming input devices, driven over each device's vendor (hidraw)
-interface (or vendor-class USB for the G7 Pro and the Kaleid). Currently supports
-the **GameSir Cyclone 2**, **G7 Pro**, **G7 Pro 8K PC** and **Tarantula Pro 8K**
-controllers, the **GameSir Kaleid** (lighting only) and the
+interface (or vendor-class USB for the G7 Pro, G7 SE and Kaleid). Currently
+supports the **GameSir Cyclone 2**, **G7 Pro**, **G7 Pro 8K PC**, **G7 SE**
+and **Tarantula Pro 8K** controllers, the **GameSir Kaleid** (lighting only) and the
 **Logitech G502 X LIGHTSPEED** mouse (see Tested hardware); the protocol modules are per-vendor
 (`vendors/gamesir`, `vendors/logitech`), so other manufacturers can be added
-alongside. It covers:
+alongside.
+
+The configurable models offer:
 
 - **Live input view** — sticks, triggers, all buttons (incl. the L4/R4/M/Home/
   Share extras), D-pad, battery + charging, firmware version, and a mode warning.
-- **Profiles** — pick which of the four profiles you're editing; a dot marks the
+- **Profiles** — pick the profile you're editing (three on G7 SE, four on other models); a dot marks the
   one the controller is actually running. Reset a profile to its defaults.
 - **Lighting** (Cyclone 2, G7 Pro 8K and Kaleid) — per-light RGB, captured effect
   presets, brightness/speed, audio-reactive / pick-up-to-wake / sleep timeout, and
@@ -95,6 +97,11 @@ can't positively identify. Fork it and customize it however you like.
 > different USB ids: **Nioh** (`3537:10c7` wired, `3537:10c8` dongle — my own pad),
 > **Royal2** (`1032`/`1033`, added by its owner [@kakxem](https://github.com/kakxem)),
 > **Championship** (`10b7` wired, `10b9` dongle, verified by its owner) and **Aimlabs** (`10c5`/`10c6`, recognised from a user report).
+>
+> The **G7 SE** (`3537:1010`, firmware descriptor 6.30) supports L4/R4 gamepad
+> remapping in three profiles and controller-wide 250/500/1000 Hz report-rate
+> settings, with staged Save, verified readback and rollback. See
+> [G7 SE support](docs/g7se.md).
 >
 > The **Tarantula Pro 8K** is configured in its PC mode, `3537:103d`: rebinds for all
 > nine extra buttons (L4, R4, C1–C4, T1–T3), macros, sticks, triggers, gyro and

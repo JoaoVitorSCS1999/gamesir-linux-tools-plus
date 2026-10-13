@@ -19,6 +19,7 @@ from gs_common import pad
 import controller_profile as profiles
 from vendors.gamesir.models.g7pro import protocol as g7pro
 from vendors.gamesir.models.kaleid import protocol as kaleid
+from vendors.gamesir.models.g7se import protocol as g7se
 
 _write_lock = threading.Lock()   # one COMMAND at a time (send_cmd)
 _wseq_lock = threading.Lock()    # one write SEQUENCE at a time (write_reg) — the
@@ -84,9 +85,14 @@ def send_cmd(*payload, gen=None, probe=False, padded=True):
             return False
         if gen is not None and gen != _generation:
             return False
+        if profiles.active() is profiles.G7_SE:
+            from gs_state import state
+            if (not g7se.CONFIGURATION_VERIFIED or gen is None or state.get('selected') != state.get('driving')
+                    or not g7se.allowed_app_request(payload) or padded):
+                return False
         try:
-            _device.write(pad(*payload) if padded else bytes(payload))
-            return True
+            written = _device.write(pad(*payload) if padded else bytes(payload))
+            return written == len(payload) if profiles.active() is profiles.G7_SE else True
         except Exception:
             return False
 
@@ -224,6 +230,16 @@ def write_reg(bank, addr, data, write_style=None, gen=None):
     while serialized writes were clean in 3/3. The trailing 20ms sleep inside
     the loop also spaces the LAST chunk from the next caller's first."""
     style = write_style or profiles.active().write_style
+    if style == 'g7se':
+        if profiles.active() is not profiles.G7_SE or gen is None:
+            return False
+        with _wseq_lock, _se_seq_lock:
+            sequence = _next_se_sequence()
+            try:
+                request = g7se.settings_write(sequence, bank, addr, data)
+            except ValueError:
+                return False
+            return send_cmd(*request, gen=gen, padded=False)
     enveloped = style in ('g7', 'gip')
     # inner block caps at 60B (5B header + 55 data); a bare Cyclone frame spends
     # 4 more bytes on the report header, leaving 48
@@ -359,6 +375,42 @@ _read_lock = threading.Lock()
 _read_q = collections.deque()      # pending (bank, addr, length)
 _read_results = {}                 # (bank, addr) -> list[int]
 _inflight = None                   # {'key', 'cmd', 't'} or None
+_se_sequence = 0
+_se_seq_lock = threading.RLock()
+
+
+def _next_se_sequence():
+    global _se_sequence
+    _se_sequence = _se_sequence % 255 + 1
+    return _se_sequence
+
+
+def se_send(command, payload, gen=None):
+    if profiles.active() is not profiles.G7_SE:
+        return None
+    with _se_seq_lock:
+        sequence = _next_se_sequence()
+        request = g7se.nexus_request(sequence, command, payload)
+        if send_cmd(*request, gen=generation() if gen is None else gen, padded=False):
+            return sequence
+    return None
+
+
+def store_se_reply(report):
+    """Route only a complete reply to the exact in-flight SE read request."""
+    global _inflight
+    if len(report) < 9:
+        return False
+    with _read_lock:
+        if _inflight is None or _inflight.get('sequence') != report[2]:
+            return False
+        bank, addr, length = _inflight['cmd']
+        data = g7se.match_read(report, bank, addr, length)
+        if data is None:
+            return False
+        _read_results[(bank, addr)] = list(data)
+        _inflight = None
+        return True
 
 
 def _reset_reads():
@@ -378,8 +430,29 @@ def request_regs(reqs):
     so a caller can tell fresh values from stale ones."""
     with _read_lock:
         for bank, addr, length in reqs:
+            if profiles.active() is profiles.G7_SE and not g7se.allowed_setting_read(bank, addr, length):
+                continue
             _read_results.pop((bank, addr), None)
             _read_q.append((bank, addr, length))
+
+
+def cancel_se_rate_reads():
+    """Retire optional rate discovery before Save or after its bounded timeout.
+
+    A missing rate response must not starve remap reads in the shared queue.
+    An abandoned reply cannot match a subsequent request's sequence.
+    """
+    global _inflight
+    if profiles.active() is not profiles.G7_SE:
+        return
+    with _read_lock:
+        def rate(cmd):
+            return cmd[0] in g7se.RATE_BANKS and cmd[1:] == (g7se.POLL_RATE, 1)
+        keep = [cmd for cmd in _read_q if not rate(cmd)]
+        _read_q.clear()
+        _read_q.extend(keep)
+        if _inflight is not None and rate(_inflight['cmd']):
+            _inflight = None
 
 
 def reg_result(bank, addr):
@@ -416,7 +489,12 @@ def pump_reads():
     if cmd:
         bank, addr, length = cmd
         style = profiles.active().write_style
-        if style == 'gip':
+        if profiles.active() is profiles.G7_SE:
+            sequence = se_send(5, bytes((4, bank)) + addr.to_bytes(2, 'big') + bytes((length,)))
+            with _read_lock:
+                if _inflight is not None and _inflight['cmd'] == cmd:
+                    _inflight['sequence'] = sequence
+        elif style == 'gip':
             # Same envelope as the G7, but on the 0x3c vendor channel: that is the
             # one verified to answer reads on the Kaleid, where the G7's 0x05 was
             # never tried. GIP supplies the sequence in its own header.
