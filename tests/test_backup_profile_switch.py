@@ -287,6 +287,10 @@ class ResetAllProfilesTests(_BridgeCase):
         self.assertTrue(ok, msg)
         self.assertEqual(state['profile'], 1)
         self.assertEqual({b for b, _a in self.pad.written_while if b < 5}, {1, 2, 3, 4})
+        # the lighting record is shared by every profile: written once, not 4x
+        import vendors.gamesir.models.cyclone2.factory as factory
+        self.assertEqual(sum(1 for b, _a in self.pad.written_while if b == 0x20),
+                         len(factory.DEFAULT_LIGHTING))
 
 
 

@@ -53,6 +53,15 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   the Cyclone 2, G7 Pro 8K and Tarantula: its settings were read before the
   controller had finished switching, and a profile only answers while it's the
   active one. Deadband now waits for the switch to be confirmed first.
+- **"Restore default lighting" on the Cyclone 2** put a static red/blue in the
+  first lighting profile, while "Reset profile" puts GameSir's default Flow
+  there; both now use GameSir's Flow. The restore is also tied to the controller
+  it started on, so swapping controllers mid-write can't land it on another.
+- **G7 Pro 8K:** a ring effect or sleep time Deadband doesn't know showed as
+  "Off"; it now shows no selection rather than a wrong one.
+- "Reset all profiles" now reports a profile whose defaults couldn't all be
+  written, and writes the shared lighting once instead of once per profile.
+- G7 Pro: unusual firmware-version text could end the configuration session.
 - The macro editor's number boxes (hold, delay, Duplicate ×) silently ignored a
   value above their limit; they now clamp it, and always show what was applied.
 - **Lighting records could be read back misaligned on a transport with a smaller

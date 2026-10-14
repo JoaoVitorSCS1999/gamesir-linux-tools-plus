@@ -64,4 +64,24 @@ _BYTES = _parse(_DUMP)
 
 # Records 0..3 occupy 0x0001..0x01f0 (4 * 124 bytes).
 FACTORY_START = 0x0001
-FACTORY_DATA = _BYTES[FACTORY_START:FACTORY_START + 4 * 0x7c]
+_SNAPSHOT = _BYTES[FACTORY_START:FACTORY_START + 4 * 0x7c]
+
+
+def _with_official_record0(snapshot):
+    """Record 0 from the OFFICIAL app's profile-reset capture (factory.py's
+    DEFAULT_LIGHTING: the Flow effect), records 1-3 from the snapshot above.
+
+    The snapshot is one unit's state, and its record 0 is a single-frame red /
+    blue static, while the official reset writes Flow there -- so "Restore
+    default lighting" and "Reset profile" used to put different things in
+    record 0. The official capture is device truth and only covers record 0;
+    nothing captured from GameSir covers records 1-3, so they stay as read."""
+    from vendors.gamesir.models.cyclone2.factory import DEFAULT_LIGHTING
+    out = list(snapshot)
+    for addr, data in DEFAULT_LIGHTING:
+        off = addr - FACTORY_START
+        out[off:off + len(data)] = data
+    return out
+
+
+FACTORY_DATA = _with_official_record0(_SNAPSHOT)

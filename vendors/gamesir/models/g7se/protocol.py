@@ -120,7 +120,7 @@ def nexus_request(sequence, command, payload):
     elif command == 0x05:
         allowed = (len(payload) == 5 and payload[0] == 4
                    and 1 <= payload[1] <= 4 and 1 <= payload[4] <= 55
-                   and int.from_bytes(payload[2:4], 'big') + payload[4] <= 480)
+                   and int.from_bytes(payload[2:4], 'big') + payload[4] <= PROFILE_SIZE)
     else:
         allowed = False
     if not allowed or not 0 <= sequence <= 255:
@@ -132,7 +132,7 @@ def match_read(reply, profile, offset, length):
     """Accept only complete replies echoing the entire read tuple."""
     reply = bytes(reply)
     echo = bytes((5, profile)) + offset.to_bytes(2, 'big') + bytes((length,))
-    if (1 <= profile <= 4 and 1 <= length <= 55 and 0 <= offset <= 480 - length
+    if (1 <= profile <= 4 and 1 <= length <= 55 and 0 <= offset <= PROFILE_SIZE - length
             and 9 + length <= len(reply) <= 64 and reply[:2] == b'\x10\x00'
             and reply[3] == 0x3c and reply[4:9] == echo):
         return reply[9:9 + length]

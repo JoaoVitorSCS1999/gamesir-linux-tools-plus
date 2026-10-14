@@ -19,12 +19,10 @@ frame across the whole record -> static, fully lit, no animation.
 
 from vendors.gamesir.control import write_reg, send_cmd
 from vendors.gamesir.models.cyclone2.led_factory import FACTORY_START, FACTORY_DATA
-from gs_state import state
 import controller_profile as profiles
 
 LED_BANK = 0x20
 LED_REC = 0x7c
-LED_SLOT = 1          # the preset slot the GUI writes to / activates
 LED_TRIPLETS = 40     # palette capacity within one 124-byte record
 FRAME_TRIPLETS = 5    # the LED render frame size (tiled to fill the record)
 NUM_FRAMES = 8        # animated effects cycle 8 frames (8 * 5 triplets = 40)
@@ -83,43 +81,6 @@ def _render_frame(colors):
         for pos in positions:
             frame[pos] = colors[i]
     return frame
-
-
-def _resolve_slot(slot):
-    """Default to the slot the controller currently shows (so we don't clobber a
-    different preset), falling back to LED_SLOT until that's known."""
-    if slot is not None:
-        return slot
-    return state['led_slot'] if state['led_slot'] is not None else LED_SLOT
-
-
-def _write_slot(record, slot):
-    """Write a 124-byte record to `slot` and make it the active effect."""
-    write_reg(LED_BANK, 0x0001 + slot * LED_REC, record[:LED_REC])
-    write_reg(LED_BANK, 0x0000, [slot])   # select it
-
-
-def lights_record(colors, brightness=100):
-    """The 124-byte record set_lights writes: a per-light palette, static."""
-    bri = max(0, min(0x64, round(brightness / 100 * 0x64)))
-    frame = _render_frame(colors)
-    palette = (frame * (LED_TRIPLETS // FRAME_TRIPLETS))[:LED_TRIPLETS]
-    flat = []
-    for r, g, b in palette:
-        flat += [r & 0xFF, g & 0xFF, b & 0xFF]
-    return [0x01, 0x05, 0x14, bri] + flat
-
-
-def set_lights(colors, brightness=100, slot=None):
-    """Write a per-light palette and make it the active effect. `colors` is a
-    list of (r,g,b), one per light in index order; brightness 0..100 (0 = off)."""
-    _write_slot(lights_record(colors, brightness), _resolve_slot(slot))
-
-
-def set_keyframes(frames, speed=10, brightness=100, slot=None):
-    """Write a user-built animation to the active slot and select it. See
-    keyframes_record for the format."""
-    _write_slot(keyframes_record(frames, speed, brightness), _resolve_slot(slot))
 
 
 def keyframes_record(frames, speed=10, brightness=100):
@@ -245,13 +206,6 @@ def pattern_record(name, brightness=100):
     return rec
 
 
-def set_pattern(name, brightness=100, slot=None):
-    """Write a named effect pattern to the active slot and select it."""
-    rec = pattern_record(name, brightness)
-    if rec is not None:
-        _write_slot(rec, _resolve_slot(slot))
-
-
 def match_pattern(record):
     """Name of the preset `record` holds, or None for anything custom. Speed and
     brightness (bytes 2-3) are the user's to change, so they don't count."""
@@ -284,40 +238,10 @@ def set_playback(playing, frame=1):
     send_cmd(0x0F, PLAYBACK_CMD, 1 if playing else 0, frame)
 
 
-def _rec_addr(slot, off):
-    """Address of byte `off` within the active (or given) slot's record."""
-    return 0x0001 + _resolve_slot(slot) * LED_REC + off
-
-
 def speed_ui(raw):
     """Convert between device raw speed (1 = fastest) and UI speed (higher =
     faster). The map is its own inverse, so it works in both directions."""
     return SPEED_MIN + SPEED_MAX - max(SPEED_MIN, min(SPEED_MAX, int(raw)))
-
-
-def set_speed(value, slot=None):
-    """Live-write animation speed to the active slot's record (+2). `value` is the
-    UI speed (higher = faster), stored inverted since the device uses 1 = fastest.
-    Only affects animated effects (Flow/Rainbow/...); ignored by static colors."""
-    write_reg(LED_BANK, _rec_addr(slot, REC_SPEED_OFF), [speed_ui(value)])
-
-
-def set_brightness(value, slot=None):
-    """Live-write brightness (0..100) to the active slot's record (+3)."""
-    write_reg(LED_BANK, _rec_addr(slot, REC_BRIGHT_OFF), [max(0, min(0x64, int(value)))])
-
-
-def set_audio_reactive(on):
-    write_reg(LED_BANK, AUDIO_REACTIVE, [1 if on else 0])
-
-
-def set_pickup_wake(on):
-    write_reg(LED_BANK, PICKUP_WAKE, [1 if on else 0])
-
-
-def set_sleep_timeout(minutes):
-    """`minutes` is the raw byte (0 = never); use values from SLEEP_OPTIONS."""
-    write_reg(LED_BANK, SLEEP_TIMEOUT, [max(0, min(0xff, int(minutes)))])
 
 
 def sleep_raw(label):
@@ -436,6 +360,8 @@ def frame_period(frames):
     return NUM_FRAMES
 
 
-def restore_factory():
-    """Rewrite lighting records 0-3 from the captured baseline."""
-    write_reg(LED_BANK, FACTORY_START, FACTORY_DATA)
+def restore_factory(write_style=None, gen=None):
+    """Rewrite lighting records 0-3 from the captured baseline. `write_style` /
+    `gen` pin the ~11 chunks to one controller session, so a switch or replug
+    mid-write can't land the rest on another unit. Returns whether it all went."""
+    return write_reg(LED_BANK, FACTORY_START, FACTORY_DATA, write_style=write_style, gen=gen)

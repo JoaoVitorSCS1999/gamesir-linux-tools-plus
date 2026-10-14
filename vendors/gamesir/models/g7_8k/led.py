@@ -73,15 +73,19 @@ def read_fields():
                (BANK, DOCK_MODE, 1), (BANK, DOCK_BRIGHT, 1)])
 
 
+# An unlisted value (another mode code, a firmware's own sleep time) maps to -1,
+# not 0: index 0 is "Off" in both lists, so a pad on an unknown mode looked off,
+# and picking anything would have been the only way to see what it really was.
+# -1 highlights no option, and nothing is written until the user picks one.
 def mode_index(code):
     for i, (_n, c) in enumerate(MODES):
         if c == code:
             return i
-    return 0
+    return -1
 
 
 def sleep_index(minutes):
     for i, (_n, m) in enumerate(SLEEP_OPTIONS):
         if m == minutes:
             return i
-    return 0
+    return -1

@@ -346,6 +346,10 @@ def decode_motion(blob):
     """Lossless documented motion values for schema-4 exports (raw enum codes)."""
     result = {}
     for section, fields, curve in motion_fields():
+        # bounds-checked like decode_profile's other fields: a short blob (a
+        # truncated import) leaves a section out instead of raising IndexError
+        if max(list(fields.values()) + [curve + 9]) >= len(blob):
+            continue
         result[section] = {key: blob[addr] for key, addr in fields.items()}
         result[section]['curve'] = list(blob[curve:curve + 10])
     return result
@@ -485,15 +489,7 @@ def open_transition_device(bus: int, address: int, sysfs: str):
 def firmware_from_payload(payload: bytes):
     text = payload[:len(payload) & ~1].decode('utf-16-le', 'replace').split('\0')[0]
     first = text[:4]
+    # ASCII digits only: str.isdigit() also accepts '²' etc., which int() then
+    # rejects -- and this runs inside the G7 session, so it would end it
     return (f'{int(first[1])}.{int(first[2])}.{int(first[3])}'
-            if len(first) == 4 and first.isdigit() else None)
-
-
-def wait_for_result(result, category, offset, timeout=2.5):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        value = result(category, offset)
-        if value is not None:
-            return value
-        time.sleep(0.025)
-    return None
+            if len(first) == 4 and first.isascii() and first.isdigit() else None)

@@ -2184,8 +2184,9 @@ class GamesirBridge(QObject):
                 self._l8_loaded = False     # re-read so the page shows the defaults
             threading.Thread(target=run, daemon=True).start()
             return
+        style, gen = self._prof.write_style, control.generation()
         def restore():
-            led.restore_factory()
+            led.restore_factory(write_style=style, gen=gen)
             self._loaded_led_slot = None    # re-read so the page shows the defaults
         _led_async(restore)
 
@@ -3011,15 +3012,17 @@ class GamesirBridge(QObject):
         # These controllers DROP back-to-back vendor commands, so pace each write
         # (else a field like LT adz-max silently doesn't land and stays at 0).
         p = self._prof
+        ok = [True]
         def w(addr, data):
-            if addr is not None:
-                control.write_reg(bank, addr, data, write_style=style, gen=gen)
+            if addr is not None and ok[0]:
+                ok[0] = control.write_reg(bank, addr, data, write_style=style, gen=gen)
                 time.sleep(0.03)
         for attr, val in self._DEFAULT_SCALARS.items():
             w(getattr(p, attr, None), self._default_scalar_bytes(p, attr, val))
         for key, attr in (('st', 'ST_CURVE'), ('rs', 'RS_CURVE'),
                           ('lt', 'LT_CURVE'), ('rt', 'RT_CURVE')):
             w(getattr(p, attr, None), self._default_curve_bytes(p, key))
+        return ok[0]        # False once a write is refused (and the rest skipped)
 
     @Slot()
     def resetProfileToDefault(self):
@@ -3078,10 +3081,14 @@ class GamesirBridge(QObject):
                     # defaults into whichever profile is still active
                     if not control.switch_profile(n, gen=gen):
                         return stop(f"The controller didn't switch to profile {n}", n)
+                    # the lighting record is shared by every profile: write it once
                     if prof.factory_reset:
-                        factory.restore_default_profile(n, write_style=style, gen=gen)
+                        done = factory.restore_default_profile(n, lighting=(i == 0),
+                                                               write_style=style, gen=gen)
                     else:
-                        self._write_generic_defaults(n, style, gen)
+                        done = self._write_generic_defaults(n, style, gen)
+                    if not done:
+                        return stop(f"Profile {n}'s defaults couldn't all be written", n)
                     # still on n? an on-pad switch mid-write lands elsewhere
                     if state.get('profile') != n:
                         return stop(f'The controller changed profile while profile {n} '
