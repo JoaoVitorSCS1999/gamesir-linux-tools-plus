@@ -222,9 +222,14 @@ write can lose a block. The app writes **write-verify-retry** — it reads every
 block back and re-sends whatever didn't take, over a few passes, then reports
 pass/fail. If a restore says some blocks are unconfirmed:
 
-- Just run **Restore** again; a second pass almost always lands the dropped
-  block. (A profile only accepts writes while it's the active one, so Restore
-  switches to each profile in turn and then back to the one you were using.)
+- Run **Restore** again; a second pass almost always lands the dropped block.
+- A profile only accepts writes while it's the active one, so Restore switches to
+  each profile in turn (and back to yours at the end), confirming every switch.
+  If it says the controller **didn't switch to profile N**, nothing was written to
+  that profile: select it on the controller yourself, then click Restore again.
+- Still failing on the same blocks? Unplug and replug the controller (or the
+  dongle) and try once more; if it persists, open an issue with the diagnostics
+  report.
 
 ### Moving the sticks drives the desktop cursor
 

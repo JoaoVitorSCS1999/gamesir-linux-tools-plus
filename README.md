@@ -24,7 +24,8 @@ The configurable models offer:
   Cyclone 2 and two (left/right) on the Kaleid. The Cyclone 2 adds
   audio-reactive / pick-up-to-wake / sleep timeout. On the **G7 Pro 8K**: ring
   effect and brightness, home-ring quadrant colours, sleep timer and dock light.
-  Lighting edits wait for Save like everything else.
+  Lighting edits wait for Save; picking a lighting profile and Restore default
+  lighting act straight away.
 - **Config editor** — deadzones and anti-deadzones (drag, or type exact values),
   stick trajectory, sensitivity curves (presets **and** a draggable custom-curve
   editor), trigger tuning (hair-trigger + response curve), vibration with
@@ -400,7 +401,8 @@ custom-curve editor, trigger tuning, vibration, poll rate), **button remap**,
 **per-paddle gamepad macros** (read-back-verified writes), **motion/gyro**,
 **Continuous Trigger**, and **backup / restore** — all verified end-to-end on hardware. Restore is
 write-verify-retry. A profile only accepts writes while it's the active one, so
-Save and Restore switch to each profile in turn; all four are writable.
+Save switches to the profile you're editing and back, and Export / Restore walk
+each profile in turn, confirming every switch; all four are writable.
 
 **Tarantula Pro 8K:** rebinds for all nine programmable buttons, macros,
 sticks, triggers, gyro and poll rate up to 8000 Hz, in its PC mode (`3537:103d`).

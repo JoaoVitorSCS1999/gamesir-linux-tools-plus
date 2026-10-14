@@ -87,9 +87,16 @@ Item {
             verticalAlignment: TextInput.AlignVCenter
             text: nf.value
             color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
-            // `nf`, not `parent`: a validator has no parent, so the cap never applied
-            selectByMouse: true; validator: IntValidator { bottom: 0; top: nf.maxVal }
-            onEditingFinished: nf.committed(parseInt(text) || 0)
+            // Digits only, no upper bound while typing: a validator `top` makes an
+            // over-cap value "Intermediate", so editingFinished never fires and the
+            // edit is silently dropped. Clamp on commit instead.
+            selectByMouse: true; validator: RegularExpressionValidator { regularExpression: /[0-9]{1,6}/ }
+            onEditingFinished: {
+                nf.committed(Math.min(nf.maxVal, parseInt(text) || 0))
+                // re-sync: if the handler clamped it back to the value it already
+                // had, `text: nf.value` wouldn't re-evaluate and the field would lie
+                text = Qt.binding(function () { return "" + nf.value })
+            }
         }
     }
 

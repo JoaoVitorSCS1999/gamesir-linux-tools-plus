@@ -36,6 +36,19 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   resolve to whichever is listed first — and hand the loser the winner's map.
 
 ### Fixed
+- **Restoring a backup failed on every controller except the G7 Pro.** Since G7
+  Pro support arrived (early September), exports from the Cyclone 2, G7 Pro 8K,
+  Tarantula and Kaleid were labelled with the G7 Pro's backup format number, and
+  Restore then refused them unless a G7 Pro was connected. Exports are labelled
+  correctly again, and backups made in the meantime restore normally — nothing
+  in them was wrong, only the label.
+- **Export and Restore now confirm each profile switch** before reading or
+  writing that profile, re-sending a dropped switch. Before, a dropped switch
+  could export one profile's settings under another's name, or leave a restore
+  writing to a profile that wasn't active. If a profile won't switch, Restore
+  says which one and writes nothing to it.
+- The macro editor's number boxes (hold, delay, Duplicate ×) silently ignored a
+  value above their limit; they now clamp it, and always show what was applied.
 - **Lighting records could be read back misaligned on a transport with a smaller
   reply.** The 124-byte record was always read in 56-byte chunks, which is the
   Cyclone's hidraw limit; GIP carries 55, and the pad answers short rather than

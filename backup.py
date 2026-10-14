@@ -42,6 +42,7 @@ import vendors.gamesir.macro as macro
 from vendors.gamesir.models.g7pro import protocol as g7pro
 
 SCHEMA = 4          # 4 adds semantic G7 Pro profiles + global dock settings
+RAW_SCHEMA = 3      # what every OTHER controller's export is: raw register entries
                     # (8K = flat 'fields'); restore still reads schema 1 and 2.
 DEVICE_FAMILY = 'GameSir'      # for messages; the snapshot stores the exact model
 LED_SLOTS = (0, 1, 2, 3, 4)
@@ -67,6 +68,27 @@ _LED8K_NAMES = {
 # resent), so allow generous headroom.
 READ_TIMEOUT = 120.0
 PROFILE_SETTLE = 0.2       # let a SET-PROFILE land before reading/writing its bank
+PROFILE_CONFIRM = 2.5      # how long to wait for the pad to report a switched profile
+PROFILE_TRIES = 3          # a dropped SET-PROFILE is re-sent this many times in all
+
+
+def _switch_profile(n):
+    """Switch the pad to profile `n` and CONFIRM it (the reader updates
+    state['profile'] from the pad's own answer), re-sending a dropped command.
+    A profile bank only takes writes while that profile is active, so writing
+    after an unconfirmed switch would write the wrong state -- the same check
+    the Save path makes before it writes."""
+    for _ in range(PROFILE_TRIES):
+        if state.get('profile') == n:
+            return True
+        control.set_profile(n)
+        deadline = time.time() + PROFILE_CONFIRM
+        while time.time() < deadline:
+            if state.get('profile') == n:
+                time.sleep(PROFILE_SETTLE)
+                return True
+            time.sleep(0.04)
+    return False
 
 
 def _profile_fields():
@@ -151,16 +173,21 @@ def export_async(path, on_progress=None, on_done=None):
         # A profile bank is only readable while THAT profile is active (same gate as
         # writes), so switch to each profile before reading its bank; lighting (bank
         # 0x20) is global. Restore whatever profile was active afterwards.
+        # The switch is CONFIRMED first: a dropped one would save the active
+        # profile's settings under another profile's name, and not say so.
         for n in prof.profile_banks:
             if n in by_bank:
-                control.set_profile(n)
-                time.sleep(PROFILE_SETTLE)
+                if not _switch_profile(n):
+                    _switch_profile(original)
+                    if on_done:
+                        on_done(False, f'The controller didn\'t switch to profile {n}, so '
+                                       'nothing was exported. Try Export again.')
+                    return
                 read_group(by_bank[n])
         for bank, group in by_bank.items():
             if bank not in prof.profile_banks:
                 read_group(group)
-        control.set_profile(original)
-        time.sleep(PROFILE_SETTLE)
+        _switch_profile(original)
 
         vals = {(b, a): control.reg_result(b, a) for b, a in keys}
         missing = [k for k, v in vals.items() if v is None]
@@ -240,7 +267,11 @@ def _build(vals):
         profiles[str(prof)] = {name: _entry(addr, vals[(prof, addr)])
                                for addr, _ln, name in fields}
     return {
-        'schema': SCHEMA,
+        # NOT `SCHEMA`: 4 means a G7 Pro semantic backup, and restore routes on
+        # it. Raw exports were stamped 4 from Sept 3 to Oct 14 2026, which made
+        # every Cyclone/8K/Tarantula/Kaleid backup un-restorable -- see
+        # _is_g7_semantic for how those files are still recognised.
+        'schema': RAW_SCHEMA,
         'device': ctrl.active().name,
         'exported': datetime.now().isoformat(timespec='seconds'),
         'profiles': profiles,
@@ -494,6 +525,20 @@ def _validate_writes(writes):
                              f'{len(byts)} bytes)')
 
 
+def _is_g7_semantic(data):
+    """A G7 Pro (schema-4) backup of decoded settings, as opposed to a raw
+    register backup. Decided by CONTENT, not the schema number alone: raw
+    exports from the other controllers were mislabelled schema 4 for a while,
+    and their entries carry the register address ('addr'); G7 ones never do."""
+    if data.get('schema') != 4:
+        return False
+    for fields in (data.get('profiles') or {}).values():
+        if isinstance(fields, dict) and any(isinstance(v, dict) and 'addr' in v
+                                            for v in fields.values()):
+            return False
+    return True
+
+
 def apply_backup(data, on_progress=None, on_done=None):
     """Write a loaded snapshot back to the controller on a daemon thread, then
     READ IT BACK and re-write whatever didn't take - the controller silently
@@ -509,7 +554,7 @@ def apply_backup(data, on_progress=None, on_done=None):
 
     Raises ValueError (before spawning the worker) on a backup whose write plan
     escapes the controller's known register map -- see _validate_writes."""
-    if data.get('schema') == 4:
+    if _is_g7_semantic(data):
         if ctrl.active() is not ctrl.G7_PRO:
             raise ValueError('schema-4 backup requires a connected G7 Pro')
         writes = _g7_writes_from(data)
@@ -564,27 +609,37 @@ def apply_backup(data, on_progress=None, on_done=None):
             return pend
 
         pending = []
-        # profile banks: switch to each profile before writing/verifying its bank.
+        unswitched = []
+        # profile banks: switch to each profile -- confirmed -- before writing and
+        # verifying its bank. One that won't switch is skipped, not written blind.
         for n in prof.profile_banks:
             if n in by_bank:
-                control.set_profile(n)
-                time.sleep(PROFILE_SETTLE)
-                pending += verify_group(by_bank[n])
+                if _switch_profile(n):
+                    pending += verify_group(by_bank[n])
+                else:
+                    unswitched.append(n)
+                    pending += by_bank[n]
         # non-profile banks (lighting 0x20): global, no switch needed.
         for bank, group in by_bank.items():
             if bank not in prof.profile_banks:
                 pending += verify_group(group)
         # leave the controller on whichever profile the user had active.
-        control.set_profile(original)
-        time.sleep(PROFILE_SETTLE)
+        returned = original is None or _switch_profile(original)
 
         if on_done:
+            back = '' if returned else (f' The controller may still be on another '
+                                        f'profile; switch it back to profile {original}.')
             if not pending:
                 on_done(True, f'Restored and verified all {total} register blocks '
-                              'across every profile + lighting.')
+                              'across every profile + lighting.' + back)
+            elif unswitched:
+                names = ', '.join(str(n) for n in unswitched)
+                on_done(False, f'Restored {len(confirmed)}/{total}. The controller didn\'t '
+                               f'switch to profile {names}, so its settings weren\'t written: '
+                               'select it on the controller and click Restore again.' + back)
             else:
                 on_done(False, f'Restored {len(confirmed)}/{total}; {len(pending)} '
-                               'blocks could not be confirmed - click Restore again.')
+                               'blocks could not be confirmed - click Restore again.' + back)
 
     threading.Thread(target=run, daemon=True).start()
 
