@@ -290,6 +290,7 @@ def read_controller():
             state['edit_profile'] = None
             state['config_claimed'] = False
             state['config_status'] = ''
+            state['config_phase'] = ''
             state['usb_bcd'] = None
             profiles.set_active(None)   # nothing connected: mark unrecognised
             time.sleep(1.0)
@@ -301,6 +302,7 @@ def read_controller():
             state['profile'] = None    # different unit: don't carry the old one's
             state['edit_profile'] = None
             state['config_status'] = ''
+            state['config_phase'] = ''
             last_id = sel['id']        # profile number onto it (drives bank select)
         prof = profiles.detect_one(sel['pid'], sel.get('product'))
         profiles.set_active(prof)                      # rest of app follows this
@@ -322,6 +324,7 @@ def read_controller():
                     read_session_g7usb(sel)
             else:
                 state['config_status'] = 'Released to games'
+                state['config_phase'] = 'released'
                 read_session_evdev(sel['id'])
             if state.get('demo'):
                 continue
@@ -336,6 +339,7 @@ def read_controller():
                 read_session_kaleid(sel)
             else:
                 state['config_status'] = 'Released to games'
+                state['config_phase'] = 'released'
                 read_session_evdev(sel['id'])
             if state.get('demo'):
                 continue
@@ -352,6 +356,7 @@ def read_controller():
             state['mode_ok'] = False
             state['config_status'] = ('Press M + Xbox to cycle the controller to '
                                       'Xbox mode, where its lighting is editable')
+            state['config_phase'] = 'failed'
             read_session_evdev(sel['id'], force_wrong_mode=True)
             state['connected'] = False
             time.sleep(0.3)
@@ -362,6 +367,7 @@ def read_controller():
             state['mode_ok'] = False
             state['config_status'] = ('Hold SHARE + MENU (☰) for XInput mode '
                                       '(resets the active profile\'s remaps)')
+            state['config_phase'] = 'failed'
             read_session_evdev(sel['id'], force_wrong_mode=True)
             state['connected'] = False
             time.sleep(0.3)
@@ -377,11 +383,14 @@ def read_controller():
                 state['config_wanted'] = False
                 if not g7se.CONFIGURATION_VERIFIED:
                     state['config_status'] = 'G7 SE configuration disabled: cold-start replies unverified'
+                    state['config_phase'] = 'failed'
                 elif _bcd != g7se.TESTED_DESCRIPTOR:
                     state['config_status'] = 'G7 SE remapping is tested only on firmware descriptor 6.30'
+                    state['config_phase'] = 'failed'
                 elif not state.get('config_status', '').startswith(
                         ('G7 SE configuration ended', 'G7 SE input restoration failed')):
                     state['config_status'] = 'Released to games'
+                    state['config_phase'] = 'released'
                 read_session_evdev(sel['id'], force_wrong_mode=True)
             state['connected'] = False
             time.sleep(0.3)
@@ -397,6 +406,7 @@ def read_controller():
                 f'G7 Pro ({edition}) — config isn\'t supported for this edition '
                 f'yet; input works. An issue naming {g7pro.VID:04x}:'
                 f'{sel["pid"]:04x} would help get it added.')
+            state['config_phase'] = 'failed'
             read_session_evdev(sel['id'], force_wrong_mode=True)
             state['connected'] = False
             time.sleep(0.3)
@@ -702,10 +712,12 @@ def transition_g7_identity(ctrl):
         remaining = deadline - time.monotonic()
         state['config_status'] = (
             f'Preparing configuration transition… {math.ceil(remaining)}s')
+        state['config_phase'] = 'claiming'
         time.sleep(min(0.1, max(0.0, remaining)))
 
     handle = None
     state['config_status'] = 'Switching controller to configuration identity…'
+    state['config_phase'] = 'claiming'
     _g7_transition_last[ctrl['id']] = time.monotonic()
     try:
         handle = g7pro.open_transition_device(
@@ -716,6 +728,7 @@ def transition_g7_identity(ctrl):
         g7pro.send_handshake(handle)
     except Exception as exc:
         state['config_status'] = 'Configuration transition failed: ' + str(exc)
+        state['config_phase'] = 'failed'
         state['access'] = ('no-access' if getattr(exc, 'errno', None)
                            in (errno.EACCES, errno.EPERM) else None)
         state['config_wanted'] = False
@@ -731,6 +744,7 @@ def transition_g7_identity(ctrl):
         state['config_claimed'] = False
 
     state['config_status'] = 'Waiting for controller to re-enumerate…'
+    state['config_phase'] = 'claiming'
     deadline = time.monotonic() + _G7_TRANSITION_TIMEOUT
     while time.monotonic() < deadline:
         if not state.get('config_wanted', True) or state.get('demo'):
@@ -740,21 +754,25 @@ def transition_g7_identity(ctrl):
         if current is not None:
             if current['pid'] in g7pro.CONFIG_PIDS:
                 state['config_status'] = 'Connecting configuration…'
+                state['config_phase'] = 'claiming'
                 return True
             if current['pid'] == g7pro.PID_NATIVE:
                 state['config_status'] = (
                     'Hold SHARE + MENU (☰) for XInput mode (resets remaps)')
+                state['config_phase'] = 'failed'
                 state['config_wanted'] = False
                 return False
             if current['pid'] not in g7pro.TRANSITION_PIDS:
                 state['config_status'] = (
                     f'Controller reappeared with unsupported USB ID '
                     f'{g7pro.VID:04x}:{current["pid"]:04x}')
+                state['config_phase'] = 'failed'
                 state['config_wanted'] = False
                 return False
         time.sleep(0.2)
     state['config_status'] = (
-        'Timed out waiting for configuration identity 109b or 109c')
+        'Timed out waiting for the controller\'s configuration identity')
+    state['config_phase'] = 'failed'
     state['config_wanted'] = False
     return False
 
@@ -818,6 +836,7 @@ def read_session_seusb(ctrl):
                     state.update(values)
     except Exception as exc:
         state['config_status'] = 'G7 SE configuration ended: ' + str(exc)
+        state['config_phase'] = 'failed'
         state['access'] = 'no-access' if getattr(exc, 'errno', None) in (errno.EACCES, errno.EPERM) else None
         state['config_wanted'] = False
     finally:
@@ -828,6 +847,7 @@ def read_session_seusb(ctrl):
                     startup.restore_input()
             except Exception as exc:
                 state['config_status'] = 'G7 SE input restoration failed: ' + str(exc)
+                state['config_phase'] = 'failed'
             finally:
                 handle.close()
         if _active_usb_handle is handle:
@@ -835,6 +855,7 @@ def read_session_seusb(ctrl):
         state.update(driving=None, config_claimed=False, mode_ok=False)
         if not state.get('config_wanted') and not state.get('config_status', '').startswith(('G7 SE configuration ended', 'G7 SE input restoration failed')):
             state['config_status'] = 'Released to games'
+            state['config_phase'] = 'released'
 
 
 def read_session_g7usb(ctrl):
@@ -847,6 +868,7 @@ def read_session_g7usb(ctrl):
     except Exception as exc:
         state['config_claimed'] = False
         state['config_status'] = str(exc)
+        state['config_phase'] = 'failed'
         state['access'] = ('no-access' if getattr(exc, 'errno', None)
                            in (errno.EACCES, errno.EPERM) else None)
         state['mode_ok'] = False
@@ -859,6 +881,7 @@ def read_session_g7usb(ctrl):
     state['driving'] = ctrl['id']
     state['config_claimed'] = True
     state['config_status'] = 'Configuring · controller unavailable to games'
+    state['config_phase'] = 'claimed'
     state['access'] = 'ok'
     state['edit_profile'] = state.get('edit_profile') or state.get('profile') or 1
     gen = control.generation()
@@ -902,6 +925,7 @@ def read_session_g7usb(ctrl):
                     state['config_status'] = (
                         f'USB identity {ctrl["pid"]:04x} returned standard XInput '
                         'reports instead of configuration telemetry')
+                    state['config_phase'] = 'failed'
                     break
                 continue
             if len(report) >= 5 and report[0] == 0x10 \
@@ -930,6 +954,7 @@ def read_session_g7usb(ctrl):
         session_error = True
         state['config_wanted'] = False
         state['config_status'] = 'USB session ended: ' + str(exc)
+        state['config_phase'] = 'failed'
     finally:
         control.clear_device()
         try:
@@ -943,6 +968,7 @@ def read_session_g7usb(ctrl):
         state.update(gyro=None, accel=None, imu_time=0.0)
         if not state.get('config_wanted') and not telemetry_error and not session_error:
             state['config_status'] = 'Released to games'
+            state['config_phase'] = 'released'
 
 
 def read_session_kaleid(ctrl):
@@ -983,6 +1009,7 @@ def read_session_kaleid(ctrl):
     except Exception as exc:
         state['config_claimed'] = False
         state['config_status'] = str(exc)
+        state['config_phase'] = 'failed'
         state['access'] = ('no-access' if getattr(exc, 'errno', None)
                            in (errno.EACCES, errno.EPERM) else None)
         state['mode_ok'] = False
@@ -994,6 +1021,7 @@ def read_session_kaleid(ctrl):
     state['driving'] = ctrl['id']
     state['config_claimed'] = True
     state['config_status'] = 'Configuring lighting · controller unavailable to games'
+    state['config_phase'] = 'claimed'
     state['access'] = 'ok'
     state['mode_ok'] = True
     last_slot = last_scan = 0.0
@@ -1028,6 +1056,7 @@ def read_session_kaleid(ctrl):
         session_error = True
         state['config_wanted'] = False
         state['config_status'] = 'USB session ended: ' + str(exc)
+        state['config_phase'] = 'failed'
     finally:
         control.clear_device()
         try:
@@ -1041,6 +1070,7 @@ def read_session_kaleid(ctrl):
         state['led_slot'] = None
         if not state.get('config_wanted') and not session_error:
             state['config_status'] = 'Released to games'
+            state['config_phase'] = 'released'
 
 
 # --- press-to-select --------------------------------------------------------

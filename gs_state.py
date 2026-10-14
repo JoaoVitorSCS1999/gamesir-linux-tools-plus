@@ -47,6 +47,9 @@ state = {
     'config_wanted': True,   # G7: claim its USB interface while selected
     'config_claimed': False,
     'config_status': '',
+    # what the status means for the Configure/Release overlay, set with it:
+    # '' | 'claiming' | 'claimed' | 'releasing' | 'released' | 'failed'
+    'config_phase': '',
 }
 
 EXTRA_BTNS = ('l4', 'l5', 'r4', 'r5', 'm', 'home', 'share')

@@ -1083,6 +1083,14 @@ class GamesirBridge(QObject):
         return state.get('config_status') or ''
 
     @Property(str, notify=statusChanged)
+    def configPhase(self):
+        """What configStatus means for the Configure/Release overlay, set by the
+        reader alongside the text: '' | 'claiming' | 'claimed' | 'releasing' |
+        'released' | 'failed'. The overlay used to infer this from the
+        message's first word, which any rewording would have broken."""
+        return state.get('config_phase') or ''
+
+    @Property(str, notify=statusChanged)
     def modeMessage(self):
         if profiles.active() is profiles.G7_SE:
             if not g7se.CONFIGURATION_VERIFIED:
@@ -3146,6 +3154,7 @@ class GamesirBridge(QObject):
         state['config_wanted'] = bool(claimed)
         state['config_status'] = ('Connecting configuration…' if claimed
                                   else 'Releasing controller to games…')
+        state['config_phase'] = 'claiming' if claimed else 'releasing'
         self.statusChanged.emit()
 
     @Slot()

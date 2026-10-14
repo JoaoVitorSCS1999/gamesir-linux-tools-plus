@@ -729,19 +729,9 @@ Window {
                 anchors.fill: parent; z: 100
                 visible: bridge.hasConfigSession && !bridge.configClaimed
                 color: Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.92)
-                readonly property bool claimInProgress:
-                    bridge.configStatus.indexOf("Preparing") === 0
-                    || bridge.configStatus.indexOf("Switching") === 0
-                    || bridge.configStatus.indexOf("Waiting") === 0
-                    || bridge.configStatus.indexOf("Connecting") === 0
-                readonly property bool claimFailed:
-                    bridge.configStatus.length > 0
-                    // prefix, not equality, so a model can append its own
-                    // follow-up hint to the released status without this reading
-                    // the release as a failure
-                    && bridge.configStatus.indexOf("Released to games") !== 0
-                    && bridge.configStatus.indexOf("Releasing") !== 0
-                    && !g7ReleasedOverlay.claimInProgress
+                // an explicit phase from the reader, not parsed from the text
+                readonly property bool claimInProgress: bridge.configPhase === "claiming"
+                readonly property bool claimFailed: bridge.configPhase === "failed"
                 Card {
                     anchors.centerIn: parent; width: 460
                     title: g7ReleasedOverlay.claimInProgress
