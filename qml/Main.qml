@@ -525,6 +525,7 @@ Window {
                     label: "Poll rate"
                     model: bridge.pollRates
                     enabled: bridge.pollRateEditable
+                    opacity: enabled ? 1 : 0.45
                     placeholderText: bridge.pollRatePlaceholder
                     currentIndex: bridge.pollRateIndex
                     onActivated: (i) => bridge.setPoll(i)
@@ -1064,7 +1065,7 @@ Window {
                             }
                         }
 
-                        Divider {}
+                        Divider { visible: !bridge.remapOnly }   // else two stack
                         SectionHeader { visible: !bridge.remapOnly; text: "Backup & Restore" }
                         BackupPanel { visible: !bridge.remapOnly; width: parent.width }
 

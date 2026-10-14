@@ -52,6 +52,7 @@ Item {
     }
     function onControllerChanged() {
         page.localRemap = ({})
+        page.localContinuous = ({})      // staged state belongs to the old model
         if (bridge.remapSources.indexOf(page.sel) < 0)
             page.sel = bridge.remapSources.length ? bridge.remapSources[0] : ""
     } }
@@ -210,6 +211,7 @@ Item {
                 visible: page.canRemap
                 enabled: !bridge.remapOnly || (bridge.config.remap !== undefined
                          && bridge.connected && !bridge.backupBusy)
+                opacity: enabled ? 1 : 0.45     // disabled has to LOOK disabled
                 Layout.fillWidth: true
                 Layout.minimumWidth: 200; Layout.preferredWidth: 240; Layout.maximumWidth: 300
                 Layout.fillHeight: true

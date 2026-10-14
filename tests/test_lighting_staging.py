@@ -144,6 +144,26 @@ class LightingStagingTests(unittest.TestCase):
         self.assertEqual(b.currentPreset, '')
         self.assertEqual(b.pendingList, ['Lighting profile 3 effect: custom colours'])
 
+    def test_a_colour_edit_while_off_stays_off(self):
+        b = self.cyclone()
+        b.lightsOff()
+        b.applyKeyframes([[[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 255]]])
+        rec = b._staged_record()
+        self.assertEqual(rec[led.REC_BRIGHT_OFF], 0)      # what the slider shows
+        self.assertEqual(b.currentPreset, 'Off')
+
+    def test_an_edit_before_lighting_is_read_says_so(self):
+        b = self.cyclone()
+        b._led_rec_slot = None                           # not read yet
+        b.applyKeyframes([[[1, 2, 3]] * 4])
+        self.assertEqual(b.pendingCount, 0)
+        self.assertIn('still being read', b._apply_status)
+
+    def test_frames_from_an_old_light_count_are_ignored(self):
+        b = self.cyclone()
+        b.applyKeyframes([[[1, 2, 3], [float('nan'), 0, 0]]])   # what a stale frame becomes
+        self.assertEqual(b.pendingCount, 0)
+
     def test_profile_reload_keeps_staged_lighting(self):
         b = self.cyclone()
         b.applyPreset('Pulse')

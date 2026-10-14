@@ -15,6 +15,10 @@ Item {
     property var frames: [bridge.lightColors.slice()]
     // Per-model: the Cyclone exposes four lights, the Kaleid two.
     readonly property int nZones: bridge.lightNames.length
+    // A different light count arrives (controllerChanged) BEFORE the new
+    // controller's lighting is read: drop a pending stage built for the old
+    // count and re-seed now, so nothing indexes past the new zones.
+    onNZonesChanged: { stageTimer.stop(); syncFromBridge() }
     property int curFrame: 0
     property bool playing: true
     property string sleepSel: "10 min"
@@ -348,7 +352,7 @@ Item {
             spacing: 16
 
             Card {
-                title: "Zone — " + bridge.lightNames[page.sel]; Layout.fillWidth: true
+                title: "Zone — " + (bridge.lightNames[page.sel] || ""); Layout.fillWidth: true
                 ColorPicker {
                     id: picker; width: parent.width
                     onEdited: page.onZoneEdited(c)

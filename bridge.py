@@ -2121,10 +2121,20 @@ class GamesirBridge(QObject):
         lightNames order. Stages them as a custom animation at the current
         speed/brightness (one frame = static colours). The page calls this as
         the user edits, so colours are staged the moment they change."""
-        norm = [[[int(c[0]), int(c[1]), int(c[2])] for c in fr] for fr in frames]
-        if not norm or self._staged_record() is None:
+        try:
+            norm = [[[int(c[0]), int(c[1]), int(c[2])] for c in fr] for fr in frames]
+        except (TypeError, ValueError, IndexError):
+            return              # a frame from before a light-count change (NaN)
+        if not norm:
             return
-        rec = led.keyframes_record(norm, self._speed, self._brightness or 100)
+        if self._staged_record() is None:
+            self._set_apply_status('Lighting is still being read from the controller; '
+                                   'try that edit again in a moment')
+            return
+        # the brightness the page shows -- 0 when the lights are Off. (It used to
+        # be `or 100`: a colour edit while Off silently staged full brightness
+        # while the slider still read 0%.)
+        rec = led.keyframes_record(norm, self._speed, self._brightness)
         # the page's colours can't express a preset's exact palette, so editing
         # a preset's colours turns it into custom frames -- unless nothing about
         # the frames changed, in which case keep the preset bytes untouched
@@ -2336,9 +2346,10 @@ class GamesirBridge(QObject):
 
     @Property(bool, notify=pendingChanged)
     def pendingHasProfileEdits(self):
-        """Whether anything staged lives in a profile bank. Lighting is global,
-        so a lighting-only Save isn't "to Profile N"."""
-        return any(r.get('kind') != 'lighting' for r in self._pending.values())
+        """Whether anything staged lives in ONE profile. Lighting is global, and
+        the G7 SE's poll rate is written to every profile, so a Save of only
+        those isn't "to Profile N"."""
+        return any(r.get('kind') not in ('lighting', 'se_rate') for r in self._pending.values())
 
     @Property('QVariantList', notify=pendingChanged)
     def pendingList(self):

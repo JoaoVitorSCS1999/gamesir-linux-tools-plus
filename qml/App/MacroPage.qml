@@ -90,9 +90,12 @@ Item {
             // Digits only, no upper bound while typing: a validator `top` makes an
             // over-cap value "Intermediate", so editingFinished never fires and the
             // edit is silently dropped. Clamp on commit instead.
-            selectByMouse: true; validator: RegularExpressionValidator { regularExpression: /[0-9]{1,6}/ }
+            // {0,6}, not {1,6}: an emptied box must still finish editing (an
+            // invalid one never does), and empty means "no change" below.
+            selectByMouse: true; validator: RegularExpressionValidator { regularExpression: /[0-9]{0,6}/ }
             onEditingFinished: {
-                nf.committed(Math.min(nf.maxVal, parseInt(text) || 0))
+                if (text !== "")
+                    nf.committed(Math.min(nf.maxVal, parseInt(text) || 0))
                 // re-sync: if the handler clamped it back to the value it already
                 // had, `text: nf.value` wouldn't re-evaluate and the field would lie
                 text = Qt.binding(function () { return "" + nf.value })

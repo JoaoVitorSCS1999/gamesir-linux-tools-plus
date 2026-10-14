@@ -79,7 +79,7 @@ Item {
     FitScroll {
         id: scroller
         anchors.fill: parent
-        anchors.bottomMargin: pbar.height + 10   // reserve the Save bar's space (no reflow)
+        anchors.bottomMargin: pbar.height + 30   // the bar + its 20 px gap (no reflow)
         anchors.margins: 20
         content: fitBox
 
