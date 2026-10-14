@@ -367,6 +367,8 @@ class MouseBridge(QObject):
                     hdr = [h for h in headers if h[0] == sector] or [(sector, 1)]
                     ok, msg = logi_config.reset_profile_to_oob(
                         dev, info, headers, sector, factory, backup_headers=hdr)
+                    if ok and not dev.reload_profile(sector):
+                        msg += " (saved; switch profile once to make the mouse use it)"
                 self._profileDone.emit(ok, msg, self._active)
             except Exception as e:
                 self._profileDone.emit(False, f'reset failed: {e}', 0)
@@ -938,6 +940,10 @@ class MouseBridge(QObject):
                         dev, info, headers, active,
                         button_changes=button_changes, gshift_changes=gshift_changes,
                         sensor=sensor, macro_changes=macro_changes, backup_headers=active_hdr)
+                    # the mouse only loads a profile when it's selected: make it
+                    # pick up what we just wrote, or the change isn't felt
+                    if ok and not dev.reload_profile(active):
+                        msg += " (saved; switch profile once to make the mouse use it)"
                     binds = self._read_both(dev, active, info['sector_size']) if ok else {}
                     # macro slots may have changed; refresh the count for the editor
                     free = _free_count(dev, info, headers) if ok else -1

@@ -214,6 +214,25 @@ class Hidpp:
                      bytes([(sector >> 8) & 0xFF, sector & 0xFF]))
         return self.current_profile()          # report what the device actually did
 
+    def reload_profile(self, sector):
+        """Make the mouse re-read profile `sector` from flash, if it's the one it
+        is running. The firmware loads a profile only when it's SELECTED, so a
+        saved change to the active profile does nothing until then -- and
+        re-selecting the same profile is ignored. Switching to another enabled
+        profile and straight back is what makes it reload (verified on the
+        G502 X: a saved 20000 DPI stage took effect only after this). Returns
+        True when the mouse ended on `sector`; writes no flash."""
+        if self.current_profile() != sector:
+            return True                         # not running it: nothing to reload
+        others = [s for s, enabled in self.profile_headers() if s != sector and enabled]
+        if not others:
+            return False                        # nowhere to step to
+        try:
+            self.set_current_profile(others[0])
+        finally:
+            now = self.set_current_profile(sector)
+        return now == sector
+
     def battery(self):
         """feature 0x1004 (unified battery) getStatus -> {'percent', 'charging'},
         or None if the feature is absent/unreadable. Best-effort; never raises so a

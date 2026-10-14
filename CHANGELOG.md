@@ -62,6 +62,10 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 - "Reset all profiles" now reports a profile whose defaults couldn't all be
   written, and writes the shared lighting once instead of once per profile.
 - G7 Pro: unusual firmware-version text could end the configuration session.
+- **Mouse (G502 X): saved changes weren't felt until the profile was switched.**
+  The mouse loads a profile only when it's selected, so a DPI or button change
+  saved to the profile it's running stayed unused. Deadband now has the mouse
+  reload it after saving (and after a factory reset).
 - **Mouse (G502 X): not found over its wireless receiver on newer kernels.**
   Linux 7.2's Logitech receiver driver answers with the mouse's receiver
   address (1) where older kernels translated it, and Deadband ignored those
