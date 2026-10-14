@@ -326,5 +326,27 @@ class SaveProfileSwitchTests(_BridgeCase):
         self.assertEqual(sent, [])
 
 
+
+class ProfileLoadTests(_BridgeCase):
+    """Clicking a profile sends the switch; its settings must not be read until
+    the pad confirms it, or the previous profile's values show under the new
+    name (the 'my remap went to P1' scare, 2026-10-13)."""
+
+    def test_settings_load_only_after_the_switch_is_confirmed(self):
+        state.update(selected='x', driving='x', edit_profile=1)
+        sent, reads = [], []
+        with patch.object(control, 'send_cmd', lambda *a, **k: sent.append(a) or True), \
+             patch.object(control, 'set_profile', self.real_set_profile), \
+             patch.object(control, 'request_regs', lambda reqs: reads.extend(reqs)):
+            self.bridge._loaded_profile = 1
+            self.bridge.setProfile(2)                      # sends 0x07, edit_profile = 2
+            self.bridge._poll_config()
+            self.assertEqual(reads, [], 'read profile 2 before the pad switched')
+            state.update(profile=2, profile_seq=state['profile_seq'] + 1)   # pad answers
+            self.bridge._poll_config()
+            self.assertTrue(reads)
+            self.assertEqual({b for b, _a, _l in reads}, {2})
+
+
 if __name__ == '__main__':
     unittest.main()

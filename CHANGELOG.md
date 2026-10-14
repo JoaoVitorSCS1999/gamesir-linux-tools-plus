@@ -49,6 +49,10 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   one and touch nothing in it, and an Export interrupted by a profile change
   mid-read is refused rather than saved. All of them (and Save) now share one
   switch routine.
+- **Clicking a profile could briefly show the previous profile's settings** on
+  the Cyclone 2, G7 Pro 8K and Tarantula: its settings were read before the
+  controller had finished switching, and a profile only answers while it's the
+  active one. Deadband now waits for the switch to be confirmed first.
 - The macro editor's number boxes (hold, delay, Duplicate ×) silently ignored a
   value above their limit; they now clamp it, and always show what was applied.
 - **Lighting records could be read back misaligned on a transport with a smaller

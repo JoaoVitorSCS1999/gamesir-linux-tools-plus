@@ -616,7 +616,7 @@ class GamesirBridge(QObject):
         mp = self._mp()
         if bank is None or not mp:
             return
-        if prof != self._m_profile and not self._m_loading:
+        if prof != self._m_profile and not self._m_loading and self._bank_ready(prof):
             control.request_regs([(bank, a, ln) for a, ln in motion.read_addrs(mp)])
             self._m_loading = True
             self._m_profile = prof
@@ -695,7 +695,7 @@ class GamesirBridge(QObject):
         mx = self._prof.macro_max
         reads = [(bank, a, ln) for _n, base in self._prof.MACRO_SLOTS
                  for a, ln in macro.read_addrs(base, mx)]
-        if prof != self._macro_profile and not self._macro_loading:
+        if prof != self._macro_profile and not self._macro_loading and self._bank_ready(prof):
             control.request_regs(reads)
             self._macro_loading = True
             self._macro_profile = prof
@@ -813,6 +813,16 @@ class GamesirBridge(QObject):
         self._config['poll'] = next(iter(rates.values())) if len(set(rates.values())) == 1 else -1
         self.pollRateStateChanged.emit()
 
+    def _bank_ready(self, prof):
+        """Whether profile `prof`'s bank can be READ yet. On the Cyclone family a
+        bank only answers while its profile is active, and clicking a profile
+        sends the switch: reading before the pad confirms it would show the
+        previous profile's settings under the new one's name. The G7 Pro and
+        G7 SE read any bank directly."""
+        if self._prof.write_style != 'cyclone':
+            return True
+        return control.profile_confirmed(prof)
+
     def _poll_config(self):
         """Read the selected profile's config once whenever the profile changes.
         Switching profiles discards any unsaved edits (mirrors the DPG app)."""
@@ -827,7 +837,7 @@ class GamesirBridge(QObject):
         prof = state.get('edit_profile') or state['profile']
         bank = self._prof.profile_bank(prof)
         if (bank is not None and prof != self._loaded_profile
-                and self._config_loading is None):
+                and self._config_loading is None and self._bank_ready(prof)):
             self._loaded_profile = prof
             if self._pending:
                 self._drop_profile_pending()
