@@ -72,23 +72,18 @@ PROFILE_CONFIRM = 2.5      # how long to wait for the pad to report a switched p
 PROFILE_TRIES = 3          # a dropped SET-PROFILE is re-sent this many times in all
 
 
-def _switch_profile(n):
-    """Switch the pad to profile `n` and CONFIRM it (the reader updates
-    state['profile'] from the pad's own answer), re-sending a dropped command.
-    A profile bank only takes writes while that profile is active, so writing
-    after an unconfirmed switch would write the wrong state -- the same check
-    the Save path makes before it writes."""
-    for _ in range(PROFILE_TRIES):
-        if state.get('profile') == n:
-            return True
-        control.set_profile(n)
-        deadline = time.time() + PROFILE_CONFIRM
-        while time.time() < deadline:
-            if state.get('profile') == n:
-                time.sleep(PROFILE_SETTLE)
-                return True
-            time.sleep(0.04)
-    return False
+def _switch_profile(n, gen=None):
+    """The shared confirmed switch (control.switch_profile), with this module's
+    timing. A profile bank only takes reads/writes while that profile is active."""
+    return control.switch_profile(n, gen=gen, tries=PROFILE_TRIES,
+                                  confirm=PROFILE_CONFIRM, settle=PROFILE_SETTLE)
+
+
+def _walks_profiles(prof):
+    """Whether a whole-pad walk switches profile on this model at all. A model
+    with no banks, or no software switch (the Kaleid), is never switched -- and
+    so never has to be switched BACK either."""
+    return bool(prof.profile_banks) and prof.software_profile_switch
 
 
 def _profile_fields():
@@ -152,6 +147,7 @@ def export_async(path, on_progress=None, on_done=None):
     prof = ctrl.active()
 
     def run():
+        gen = control.generation()
         original = state.get('profile') or (prof.profile_banks[0] if prof.profile_banks else 1)
         by_bank = {}
         for b, a, ln in reqs:
@@ -175,19 +171,27 @@ def export_async(path, on_progress=None, on_done=None):
         # 0x20) is global. Restore whatever profile was active afterwards.
         # The switch is CONFIRMED first: a dropped one would save the active
         # profile's settings under another profile's name, and not say so.
+        def fail(msg):
+            if _walks_profiles(prof):
+                _switch_profile(original, gen)
+            if on_done:
+                on_done(False, msg)
+
         for n in prof.profile_banks:
             if n in by_bank:
-                if not _switch_profile(n):
-                    _switch_profile(original)
-                    if on_done:
-                        on_done(False, f'The controller didn\'t switch to profile {n}, so '
-                                       'nothing was exported. Try Export again.')
-                    return
+                if not _switch_profile(n, gen):
+                    return fail(f'The controller didn\'t switch to profile {n}, so nothing '
+                                'was exported. Try Export again.')
                 read_group(by_bank[n])
+                # still on n? a switch DURING the read (an on-pad chord) would
+                # have the rest of this bank read from another profile
+                if state.get('profile') != n:
+                    return fail(f'The controller changed profile while profile {n} was '
+                                'being read, so nothing was exported. Try Export again.')
         for bank, group in by_bank.items():
             if bank not in prof.profile_banks:
                 read_group(group)
-        _switch_profile(original)
+        back = not _walks_profiles(prof) or _switch_profile(original, gen)
 
         vals = {(b, a): control.reg_result(b, a) for b, a in keys}
         missing = [k for k, v in vals.items() if v is None]
@@ -204,7 +208,9 @@ def export_async(path, on_progress=None, on_done=None):
                 on_done(False, f'Could not write file: {e}')
             return
         if on_done:
-            on_done(True, f'Saved snapshot to {path}')
+            on_done(True, f'Saved snapshot to {path}' + ('' if back else
+                    f'. The controller may still be on another profile; switch it '
+                    f'back to profile {original}.'))
 
     threading.Thread(target=run, daemon=True).start()
 
@@ -532,11 +538,15 @@ def _is_g7_semantic(data):
     and their entries carry the register address ('addr'); G7 ones never do."""
     if data.get('schema') != 4:
         return False
-    for fields in (data.get('profiles') or {}).values():
-        if isinstance(fields, dict) and any(isinstance(v, dict) and 'addr' in v
-                                            for v in fields.values()):
-            return False
-    return True
+    # the WHOLE file, not just 'profiles': a Kaleid backup has no profiles and
+    # keeps its raw entries under lighting
+    def raw(node):
+        if isinstance(node, dict):
+            return 'addr' in node or any(raw(v) for v in node.values())
+        if isinstance(node, list):
+            return any(raw(v) for v in node)
+        return False
+    return not raw({k: v for k, v in data.items() if k in ('profiles', 'lighting')})
 
 
 def apply_backup(data, on_progress=None, on_done=None):
@@ -614,7 +624,7 @@ def apply_backup(data, on_progress=None, on_done=None):
         # verifying its bank. One that won't switch is skipped, not written blind.
         for n in prof.profile_banks:
             if n in by_bank:
-                if _switch_profile(n):
+                if _switch_profile(n, gen):
                     pending += verify_group(by_bank[n])
                 else:
                     unswitched.append(n)
@@ -624,7 +634,7 @@ def apply_backup(data, on_progress=None, on_done=None):
             if bank not in prof.profile_banks:
                 pending += verify_group(group)
         # leave the controller on whichever profile the user had active.
-        returned = original is None or _switch_profile(original)
+        returned = not _walks_profiles(prof) or _switch_profile(original, gen)
 
         if on_done:
             back = '' if returned else (f' The controller may still be on another '

@@ -42,11 +42,13 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   Restore then refused them unless a G7 Pro was connected. Exports are labelled
   correctly again, and backups made in the meantime restore normally — nothing
   in them was wrong, only the label.
-- **Export and Restore now confirm each profile switch** before reading or
-  writing that profile, re-sending a dropped switch. Before, a dropped switch
-  could export one profile's settings under another's name, or leave a restore
-  writing to a profile that wasn't active. If a profile won't switch, Restore
-  says which one and writes nothing to it.
+- **Export, Restore and "Reset all profiles" now confirm each profile switch**
+  before reading or writing that profile, re-sending a dropped switch. Before, a
+  dropped switch could export one profile's settings under another's name, or
+  write to a profile that wasn't active. If a profile won't switch, they say which
+  one and touch nothing in it, and an Export interrupted by a profile change
+  mid-read is refused rather than saved. All of them (and Save) now share one
+  switch routine.
 - The macro editor's number boxes (hold, delay, Duplicate ×) silently ignored a
   value above their limit; they now clamp it, and always show what was applied.
 - **Lighting records could be read back misaligned on a transport with a smaller

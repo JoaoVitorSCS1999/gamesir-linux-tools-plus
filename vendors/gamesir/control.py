@@ -117,6 +117,42 @@ def set_profile(n, gen=None):
     return send_cmd(0x0F, 0x07, n, gen=gen)
 
 
+def switch_profile(n, gen=None, check=None, tries=3, confirm=2.5, settle=0.2):
+    """Switch the pad to profile `n` and CONFIRM it: the reader publishes the
+    pad's own answer to the periodic get-profile query as state['profile'].
+
+    The ONE place a whole-pad walk or a Save switches profile. A profile bank
+    only takes reads/writes while that profile is active, so acting on an
+    unconfirmed switch reads or writes the wrong state. A dropped switch is
+    re-sent (`tries` in all); a refused one (no device, a model with no
+    software switch, a stale `gen`) fails at once rather than waiting. `check`
+    is the caller's session check, run on every poll -- it raises to abort.
+    After a confirmed switch, wait `settle` so the first bank command isn't
+    sent back-to-back with the switch (the controller drops those)."""
+    from gs_state import state
+    for _ in range(tries):
+        if check:
+            check()
+        if gen is not None and gen != _generation:
+            return False
+        if state.get('profile') == n:
+            time.sleep(settle)
+            return True
+        if not set_profile(n, gen=gen):
+            return False
+        deadline = time.monotonic() + confirm
+        while time.monotonic() < deadline:
+            if check:
+                check()
+            if gen is not None and gen != _generation:
+                return False
+            if state.get('profile') == n:
+                time.sleep(settle)
+                return True
+            time.sleep(0.04)
+    return False
+
+
 _gip_seq = 0
 _gip_seq_lock = threading.Lock()
 

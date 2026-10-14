@@ -5,6 +5,7 @@ write the wrong profile. No hardware: a fake pad behind patched control calls.""
 import os
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -142,6 +143,106 @@ class BackupProfileSwitchTests(unittest.TestCase):
         self.assertTrue(backup._is_g7_semantic(g7))
         with self.assertRaisesRegex(ValueError, 'G7 Pro'):
             backup.apply_backup(g7)               # a Cyclone is connected
+
+    # --- core-pass review (C1-C9) -------------------------------------------
+    def test_a_refused_switch_fails_at_once(self):
+        with patch.object(control, 'set_profile', lambda n, gen=None: False):
+            t = time.monotonic()
+            self.assertFalse(control.switch_profile(3, confirm=1.0))
+            self.assertLess(time.monotonic() - t, 0.5)
+
+    def test_a_controller_swap_stops_the_switch(self):
+        self.assertFalse(control.switch_profile(3, gen=control.generation() + 1))
+        self.assertEqual(state['profile'], 1)            # nothing was sent
+
+    def test_a_profile_change_during_an_export_read_is_caught(self):
+        real = self.pad.request_regs
+        def flip(reqs):
+            real(reqs)
+            if any(b == 2 for b, _a, _l in reqs):
+                state['profile'] = 3                       # an on-pad chord mid-read
+        self.pad.request_regs = flip
+        with patch.object(control, 'request_regs', flip):
+            path = os.path.join(self.tmp.name, 'b.json')
+            out = self.run_and_wait(backup.export_async, path)
+        self.assertFalse(out['ok'])
+        self.assertIn('changed profile while profile 2', out['msg'])
+        self.assertFalse(os.path.exists(path))
+
+    def test_export_reports_a_failed_switch_back(self):
+        path = os.path.join(self.tmp.name, 'b.json')
+        real = self.pad.set_profile
+        def stuck_after(n, gen=None):
+            return real(n) if n != 1 else True           # the way back is dropped
+        with patch.object(control, 'set_profile', stuck_after):
+            out = self.run_and_wait(backup.export_async, path)
+        self.assertTrue(out['ok'])
+        self.assertIn('switch it back to profile 1', out['msg'])
+
+    def test_kaleid_backup_never_switches_and_its_old_label_restores(self):
+        profiles.set_active(profiles.KALEID)
+        sent = []
+        with patch.object(control, 'set_profile', lambda n, gen=None: sent.append(n) or False):
+            path = os.path.join(self.tmp.name, 'k.json')
+            t = time.monotonic()
+            out = self.run_and_wait(backup.export_async, path)
+            self.assertTrue(out['ok'], out['msg'])
+            self.assertNotIn('switch it back', out['msg'])
+            data = backup.load(path)
+            self.assertEqual(data['profiles'], {})
+            data['schema'] = 4                           # as exported Sept 3 - Oct 14
+            self.assertFalse(backup._is_g7_semantic(data))
+            out = self.run_and_wait(backup.apply_backup, data)
+            self.assertTrue(out['ok'], out['msg'])
+            self.assertNotIn('switch it back', out['msg'])
+            self.assertLess(time.monotonic() - t, 2.0)    # no 3 x confirm stall
+        self.assertEqual(sent, [])
+
+
+class ResetAllProfilesTests(BackupProfileSwitchTests.__base__):
+    """Reset-all walks every profile too (finding C6): same confirmed switch."""
+
+    def setUp(self):
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        from PySide6.QtGui import QGuiApplication
+        self.app = QGuiApplication.instance() or QGuiApplication([])
+        BackupProfileSwitchTests.setUp(self)
+        # factory.py imports write_reg BY NAME, so patching control alone
+        # wouldn't reach it (the first import would pin one test's fake)
+        import vendors.gamesir.models.cyclone2.factory as factory
+        self.patches.append(patch.object(factory, 'write_reg', self.pad.write_reg))
+        self.patches[-1].start()
+        from bridge import GamesirBridge
+        self.bridge = GamesirBridge()
+        self.bridge._prof = profiles.CYCLONE
+        self.results = []
+        self.bridge.backupStatus.connect(lambda ok, msg: self.results.append((ok, msg)))
+
+    def tearDown(self):
+        BackupProfileSwitchTests.tearDown(self)
+
+    def reset_all(self):
+        with patch.object(threading.Thread, 'start', lambda t: t.run()):
+            self.bridge.resetAllProfiles()
+        self.app.processEvents()
+        return self.results[-1]
+
+    def test_reset_all_stops_at_a_profile_that_wont_switch(self):
+        self.pad.stuck.add(3)
+        ok, msg = self.reset_all()
+        self.assertFalse(ok)
+        self.assertIn("didn't switch to profile 3", msg)
+        for bank, active in self.pad.written_while:
+            if bank in (1, 2, 3, 4):
+                self.assertEqual(bank, active)
+        self.assertNotIn(3, {b for b, _a in self.pad.written_while})
+        self.assertEqual(state['profile'], 1)
+
+    def test_reset_all_switches_back_when_done(self):
+        ok, msg = self.reset_all()
+        self.assertTrue(ok, msg)
+        self.assertEqual(state['profile'], 1)
+        self.assertEqual({b for b, _a in self.pad.written_while if b < 5}, {1, 2, 3, 4})
 
 
 if __name__ == '__main__':
