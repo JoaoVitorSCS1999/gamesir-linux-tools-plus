@@ -146,10 +146,15 @@ Item {
                 title: "Lighting Profile"; Layout.fillWidth: true
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
+                    // Two separate sets of "profiles" are easy to mix up: say so.
                     text: bridge.lightingSlotSelectable
-                          ? "Independent of the hardware profile — shared across all four."
-                          : "Selected on the controller with M + Y / B / A / X. " +
-                            "Whichever one it shows is the one you're editing."
+                          ? "Lighting has its own four profiles, separate from the " +
+                            "controller profiles (P1–P4) at the top: switching one " +
+                            "doesn't change the other. Picking one here switches " +
+                            "the controller's lights straight away."
+                          : "Lighting has its own profiles, separate from the controller " +
+                            "profiles at the top. Pick one on the controller with " +
+                            "M + Y / B / A / X; whichever it shows is the one you're editing."
                     color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 Row {

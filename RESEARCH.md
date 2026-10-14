@@ -50,9 +50,10 @@ empty `0x12` report, the other the live one) — the app probes and picks the li
 | Enter firmware loader | `0f 17 55 88` | *(re-enumerates as JieLi loader)* |
 
 Banks `0x01`–`0x04` map to the four profiles and `0x20` holds lighting/dock
-settings, but in practice only the **active** profile bank and `0x20` reliably accept
-writes — banks `0x02`–`0x04` (the stored, non-active profiles) appear read-only on this
-controller. Deadzones, anti-deadzones, stick trajectory, response curves, trigger
+settings. A profile bank only accepts writes while that profile is the **active**
+one (the official app sends the profile switch `0f 07 N` before writing bank N), so
+Deadband switches first; the older note that banks `0x02`–`0x04` were read-only was
+that, not a real limit — writes to profile 2 verified on hardware 2026-10-14. Deadzones, anti-deadzones, stick trajectory, response curves, trigger
 tuning (hair-trigger + curve), vibration, poll rate and button remaps are all
 register fields. Live **input** is the `0x12` vendor report (sticks, triggers,
 buttons incl. the firmware-only L4/R4/M paddles, battery, charging).

@@ -97,6 +97,13 @@ Item {
 
                     Card {
                         title: "Controller Light"; Layout.fillWidth: true
+                        Text {
+                            width: parent.width; wrapMode: Text.WordWrap
+                            text: "Lighting is shared by all controller profiles (P1–P4): " +
+                                  "switching profile doesn't change it."
+                            color: Theme.textFaint; font.family: Theme.fontFamily
+                            font.pixelSize: Theme.fontS
+                        }
                         Flow {
                             width: parent.width; spacing: 8
                             Repeater {

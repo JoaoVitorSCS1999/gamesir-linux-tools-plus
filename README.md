@@ -18,13 +18,13 @@ The configurable models offer:
   Share extras), D-pad, battery + charging, firmware version, and a mode warning.
 - **Profiles** — pick the profile you're editing (three on G7 SE, four on other models); a dot marks the
   one the controller is actually running. Reset a profile to its defaults.
-- **Lighting** (Cyclone 2, G7 Pro 8K and Kaleid) — per-light RGB, captured effect
-  presets, brightness/speed, audio-reactive / pick-up-to-wake / sleep timeout, and
-  a **custom keyframe animation editor** (add/remove keyframes, randomize,
-  play/pause). The number of addressable lights is per model — four on the
-  Cyclone 2, two (left/right) on the Kaleid, which shares the Cyclone's lighting
-  engine and so gets the same editor minus the controls it doesn't have (see
-  Tested hardware).
+- **Lighting** — on the **Cyclone 2** and **Kaleid**: per-light RGB, captured effect
+  presets, brightness/speed and a **custom keyframe animation editor** (add/remove
+  keyframes, randomize; play/pause on the Cyclone 2), with four lights on the
+  Cyclone 2 and two (left/right) on the Kaleid. The Cyclone 2 adds
+  audio-reactive / pick-up-to-wake / sleep timeout. On the **G7 Pro 8K**: ring
+  effect and brightness, home-ring quadrant colours, sleep timer and dock light.
+  Lighting edits wait for Save like everything else.
 - **Config editor** — deadzones and anti-deadzones (drag, or type exact values),
   stick trajectory, sensitivity curves (presets **and** a draggable custom-curve
   editor), trigger tuning (hair-trigger + response curve), vibration with
@@ -399,8 +399,8 @@ read/switch, rumble, full per-light RGB + effect presets + lighting power settin
 custom-curve editor, trigger tuning, vibration, poll rate), **button remap**,
 **per-paddle gamepad macros** (read-back-verified writes), **motion/gyro**,
 **Continuous Trigger**, and **backup / restore** — all verified end-to-end on hardware. Restore is
-write-verify-retry; only the active profile + lighting are guaranteed (banks
-`0x02`–`0x04`, the stored profiles, appear read-only on this controller).
+write-verify-retry. A profile only accepts writes while it's the active one, so
+Save and Restore switch to each profile in turn; all four are writable.
 
 **Tarantula Pro 8K:** rebinds for all nine programmable buttons, macros,
 sticks, triggers, gyro and poll rate up to 8000 Hz, in its PC mode (`3537:103d`).
@@ -478,6 +478,12 @@ see [Troubleshooting](MANUAL.md#troubleshooting--recovery) for the full picture.
 and the **open items** — verifying the RT block, some remap target codes,
 profile-switch sync, PS4/Switch input parsing — live in
 **[RESEARCH.md](RESEARCH.md)** and **[TODO.md](TODO.md)**.
+
+## Support
+
+Deadband is free and will stay that way. If it's been useful to you, you can
+[buy me a coffee on Ko-fi](https://ko-fi.com/broroeror). Entirely optional, and
+bug reports and controller details help just as much.
 
 ## License & disclaimer
 

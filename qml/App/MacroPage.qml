@@ -74,6 +74,7 @@ Item {
 
     // small editable number field (lets you type / copy-paste hold & delay in ms)
     component NumField: Rectangle {
+        id: nf
         property int value: 0
         property int maxVal: 65535
         signal committed(int v)
@@ -84,10 +85,11 @@ Item {
             id: input
             anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8
             verticalAlignment: TextInput.AlignVCenter
-            text: parent.value
+            text: nf.value
             color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
-            selectByMouse: true; validator: IntValidator { bottom: 0; top: parent.maxVal }
-            onEditingFinished: parent.committed(parseInt(text) || 0)
+            // `nf`, not `parent`: a validator has no parent, so the cap never applied
+            selectByMouse: true; validator: IntValidator { bottom: 0; top: nf.maxVal }
+            onEditingFinished: nf.committed(parseInt(text) || 0)
         }
     }
 
@@ -132,7 +134,7 @@ Item {
                 Item { Layout.fillWidth: true }
                 Text { text: "Macro"; color: Theme.textDim
                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
-                       anchors.verticalCenter: parent.verticalCenter }
+                       Layout.alignment: Qt.AlignVCenter }
                 ToggleSwitch {
                     id: macroSw
                     onToggled: { page.enable = macroSw.checked

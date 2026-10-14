@@ -222,11 +222,9 @@ write can lose a block. The app writes **write-verify-retry** — it reads every
 block back and re-sends whatever didn't take, over a few passes, then reports
 pass/fail. If a restore says some blocks are unconfirmed:
 
-- **Stored profiles 2–4** (register banks `0x02`–`0x04`) appear **read-only** on
-  this controller, so only the **active profile + lighting** are guaranteed to
-  restore. The status line calls this out — it's expected, not a failure.
-- For the **active profile / lighting**, just run **Restore** again; a second pass
-  almost always lands the dropped block.
+- Just run **Restore** again; a second pass almost always lands the dropped
+  block. (A profile only accepts writes while it's the active one, so Restore
+  switches to each profile in turn and then back to the one you were using.)
 
 ### Moving the sticks drives the desktop cursor
 
