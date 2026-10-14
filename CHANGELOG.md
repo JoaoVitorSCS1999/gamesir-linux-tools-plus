@@ -5,9 +5,25 @@ and Logitech mice — newest first. This is the
 curated, user-facing summary; the complete history is in git. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com).
 
-## [Unreleased]
+## [0.5.0] — 2026-10-13
 
 ### Added
+- **G7 Pro Wuchang edition** (wired `3537:10a7`), plus G7 Pro **gyro settings**
+  (Aim / Tilt), **live gyro and accelerometer readings**, and **a test button for
+  each of the four vibration motors**. Contributed and hardware-tested by
+  [@sinchrotron](https://github.com/sinchrotron) (#20). A G7 Pro whose gyro block
+  was never filled in gets the documented defaults on its first gyro edit.
+- **Cyclone 2 Continuous Trigger** (tap to hold, tap to release) for every
+  remappable button, and View / Menu / Capture as remap targets. Contributed by
+  [@b1naryblaz3](https://github.com/b1naryblaz3) (#22).
+- **G7 Pro 8K PC Championship edition** (`10b7` wired, `10b9` dongle), verified
+  by its owner (#23). The README now lists the 8K editions.
+- **Deadzones are typable** as well as draggable, which makes the 8K's fine
+  (0.1%) steps usable. Dragging back to the controller's own value no longer
+  counts as a change.
+- The diagnostics report shows each controller's **USB link speed** and the real
+  maximum report rate it allows.
+- The Tarantula Pro 8K has its own controller drawing.
 - **GameSir G7 SE** (`3537:1010`, firmware descriptor 6.30): persistent L4/R4
   gamepad remapping across the three Nexus profiles and controller-wide
   250/500/1000 Hz report-rate settings, staged Save with durable
@@ -36,6 +52,10 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   resolve to whichever is listed first — and hand the loser the winner's map.
 
 ### Fixed
+- **The Reset profile button had been missing since September 8**; it's back.
+- **Two quick Saves to a profile you weren't on could write the second one to the
+  wrong profile.** Deadband trusted the controller's last-known profile right
+  after switching back; it now waits for a fresh answer.
 - **Restoring a backup failed on every controller except the G7 Pro.** Since G7
   Pro support arrived (early September), exports from the Cyclone 2, G7 Pro 8K,
   Tarantula and Kaleid were labelled with the G7 Pro's backup format number, and
@@ -95,6 +115,10 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   affected.
 
 ### Changed
+- **One Save path for the Cyclone 2, G7 Pro 8K, Tarantula and Kaleid:** Save
+  records the current values in a recovery file, writes, reads every change back,
+  and restores the originals if anything doesn't match. Recovery files are capped
+  at the newest 20.
 - **Lighting waits for Save, like every other page.** Presets, colours, keyframes,
   brightness, speed, power settings, and the G7 Pro 8K's ring and dock settings
   used to be written to the controller the moment you touched them, with nothing in
@@ -106,6 +130,9 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
   write to the pad but count as separate changes in the bar.
 - Save sends a write once more if its read-back doesn't match before treating it
   as a failure: these controllers occasionally drop a vendor write.
+- The Lights page explains that lighting profiles are separate from controller
+  profiles, and the README no longer says profiles 2–4 are read-only (they aren't).
+- A **Sponsor** button (Ko-fi) on the GitHub page.
 - The "Configure controller / Release to games" session and its released-state
   overlay are now driven by whether a model is configured over a *claimed USB
   interface*, rather than by "is this a G7 Pro" — the Kaleid is the second such
