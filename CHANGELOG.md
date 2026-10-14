@@ -62,6 +62,18 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 - "Reset all profiles" now reports a profile whose defaults couldn't all be
   written, and writes the shared lighting once instead of once per profile.
 - G7 Pro: unusual firmware-version text could end the configuration session.
+- **Mouse (G502 X):**
+  - A change made while an Apply was running (including the macro editor's own
+    auto-save) was silently dropped; only what the Apply wrote is now cleared.
+  - One failed read no longer wipes everything staged; it says what went wrong.
+  - With the receiver plugged in and the mouse off, Deadband no longer reports
+    a permissions problem.
+  - Picking another profile during an operation, or a factory reset that fails,
+    no longer loses or mislabels staged changes.
+  - A profile named by other software (Solaar) can be edited again.
+  - Emoji names over the 24-character limit get a clear message, out-of-range
+    macro scroll amounts and buttons are refused instead of wrapping, and a
+    failed write only says "reverted" once the revert is confirmed.
 - The macro editor's number boxes (hold, delay, Duplicate ×) silently ignored a
   value above their limit; they now clamp it, and always show what was applied.
 - **Lighting records could be read back misaligned on a transport with a smaller

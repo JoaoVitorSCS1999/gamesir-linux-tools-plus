@@ -61,6 +61,15 @@ REPORT_RATES = [125, 250, 500, 1000]
 DPI_FALLBACK = {'min': 100, 'max': 25600, 'step': 50}
 
 
+
+def _free_count(dev, info, headers):
+    """Free macro slots, or -1 when the reference scan can't complete (the
+    editor then shows the count as unknown rather than a misleading 0)."""
+    try:
+        return len(logi_config.free_macro_sectors(dev, info, headers))
+    except logi_config.MacroScanError:
+        return -1
+
 class MouseBridge(QObject):
     presenceChanged = Signal()   # present / permission / activeProfile changed
     profilesChanged = Signal()   # the profile list / which one is selected changed
@@ -110,6 +119,9 @@ class MouseBridge(QObject):
         self._pending_macros = {}       # {button:int -> macrodef dict} — staged macros (primary bank)
         self._macro_slots_free = -1     # erased macro sectors available; -1 = not probed
         self._io = threading.Lock()     # serialize device access (worker threads)
+        self._refreshing = False        # a refresh worker is running
+        self._applying = ({}, {}, {})   # what the running/last Apply wrote
+        self._resetting = False         # a factory reset is running
 
         self._refreshDone.connect(self._on_refresh)
         self._remapDone.connect(self._on_remap)
@@ -142,6 +154,19 @@ class MouseBridge(QObject):
 
     def _node_present(self):
         return self._node_pid() is not None
+
+    @staticmethod
+    def _nodes_accessible():
+        """Whether every enumerable G502 X / receiver node can be opened."""
+        try:
+            import hidcompat as hid
+            paths = [d.get('path') for d in hid.enumerate()
+                     if d.get('vendor_id') == hidpp.LOGITECH_VID
+                     and d.get('product_id') in (hidpp.G502X_PIDS + (0xC547,))]
+            paths = [p.decode() if isinstance(p, bytes) else p for p in paths if p]
+            return bool(paths) and all(os.access(p, os.R_OK | os.W_OK) for p in paths)
+        except Exception:
+            return False
 
     def _poll(self):
         if self._busy:
@@ -257,6 +282,11 @@ class MouseBridge(QObject):
         sector = int(sector)
         if sector == self._selected or sector not in [p['sector'] for p in self._profiles]:
             return
+        if self._busy:
+            # refresh() would no-op, leaving the old profile's data on screen
+            # under the new name -- and the next Apply aimed at the new one
+            self._set_apply('⚠ wait for the current operation to finish')
+            return
         if self._pending or self._pending_sensor or self._pending_macros:
             self._set_apply('⚠ apply or discard your staged changes first')
             return
@@ -317,10 +347,9 @@ class MouseBridge(QObject):
             return
         self._busy = True
         self.busyChanged.emit()
-        self._pending = {}                 # the queue was staged against the old
-        self._pending_sensor = {}          # contents; a reset makes it meaningless
-        self._pending_macros = {}
-        self.pendingChanged.emit()
+        # the staged queue is cleared only once the reset has actually rewritten
+        # the profile (see _on_profile_switch) -- a failed or no-op reset keeps it
+        self._resetting = True
         self._set_apply('Restoring factory settings…')
         threading.Thread(target=self._reset_worker, args=(target, factory),
                          daemon=True).start()
@@ -380,6 +409,13 @@ class MouseBridge(QObject):
     def _on_profile_switch(self, ok, message, active_now):
         self._busy = False
         self.busyChanged.emit()
+        if self._resetting:
+            self._resetting = False
+            if ok and message != 'already at factory defaults':
+                self._pending = {}             # staged against contents the reset
+                self._pending_sensor = {}      # just replaced
+                self._pending_macros = {}
+                self.pendingChanged.emit()
         self._set_apply(('✓ ' if ok else '⚠ ') + message)
         if ok:
             self._active = active_now
@@ -554,7 +590,11 @@ class MouseBridge(QObject):
             wireless = pid is not None and pid != 0xC098
             dev = hidpp.find_device()
             if dev is None:
-                perm = 'no-access' if pid is not None else 'absent'
+                # A Logitech node we can't open is a permission problem; one we
+                # CAN open that has no mouse behind it is a receiver with the
+                # mouse off or asleep -- not something a udev rule fixes.
+                perm = ('absent' if pid is None or self._nodes_accessible()
+                        else 'no-access')
                 self._refreshDone.emit(False, perm, 0, 0, -1, wireless, {}, [])
                 return
             try:
@@ -605,6 +645,14 @@ class MouseBridge(QObject):
 
     # ------------------------------------------------- GUI-thread result handlers
     def _on_refresh(self, present, perm, active, count, battery, wireless, binds, profiles):
+        self._refreshing = False
+        if not present and perm.startswith('read error'):
+            # say what happened (the connect screen only knows 'no-access' and
+            # 'absent'), and if the mouse WAS showing -- one wireless timeout --
+            # keep its staged edits and chosen profile; the next refresh retries
+            self._set_apply(f"⚠ couldn't read the mouse ({perm[len('read error: '):]}) — try again")
+            if self._present:
+                return
         self._permission = perm
         self._present = present
         self._active = active
@@ -643,9 +691,12 @@ class MouseBridge(QObject):
     # -------------------------------------------------------------------- slots
     @Slot()
     def refresh(self):
-        """Detect the device and read the active profile's bindings (off-thread)."""
-        if self._busy:
+        """Detect the device and read the active profile's bindings (off-thread).
+        One at a time: with the receiver in but the mouse off, a refresh takes
+        longer than the 3 s poll, and they used to pile up."""
+        if self._busy or self._refreshing:
             return
+        self._refreshing = True
         threading.Thread(target=self._refresh_worker, daemon=True).start()
 
     @Slot(int, str)
@@ -718,7 +769,7 @@ class MouseBridge(QObject):
                 with dev:
                     info = dev.onboard_info()
                     headers = dev.profile_headers()
-                    free = len(logi_config.free_macro_sectors(dev, info, headers))
+                    free = _free_count(dev, info, headers)
                 self._macroSlotsDone.emit(free)
             except Exception:
                 pass
@@ -746,7 +797,7 @@ class MouseBridge(QObject):
                     info = dev.onboard_info()
                     headers = dev.profile_headers()
                     ok, _, msg = logi_config.reclaim_orphan_macros(dev, info, headers)
-                    free = len(logi_config.free_macro_sectors(dev, info, headers))
+                    free = _free_count(dev, info, headers)
                 self._reclaimDone.emit(ok, msg, free)
             except Exception as e:
                 self._reclaimDone.emit(False, f'error: {e}', -1)
@@ -835,6 +886,7 @@ class MouseBridge(QObject):
         snapshot = dict(self._pending)               # {'<layer>:<button>': spec}
         sensor_snapshot = dict(self._pending_sensor)
         macro_snapshot = dict(self._pending_macros)  # {button:int -> macrodef}
+        self._applying = (snapshot, sensor_snapshot, macro_snapshot)
         threading.Thread(target=self._apply_worker,
                          args=(snapshot, sensor_snapshot, macro_snapshot,
                                self._selected), daemon=True).start()
@@ -879,7 +931,7 @@ class MouseBridge(QObject):
                         sensor=sensor, macro_changes=macro_changes, backup_headers=active_hdr)
                     binds = self._read_both(dev, active, info['sector_size']) if ok else {}
                     # macro slots may have changed; refresh the count for the editor
-                    free = len(logi_config.free_macro_sectors(dev, info, headers)) if ok else -1
+                    free = _free_count(dev, info, headers) if ok else -1
                 self._applyDone.emit(ok, msg, binds)
                 if ok:
                     self._macroSlotsDone.emit(free)
@@ -894,9 +946,14 @@ class MouseBridge(QObject):
         self._apply_status = ('✓ ' if ok else '⚠ ') + status
         self.applyStatusChanged.emit()
         if ok:
-            self._pending = {}                       # committed -> clear the queue
-            self._pending_sensor = {}
-            self._pending_macros = {}
+            # drop only what this Apply wrote: an edit staged while it ran (the
+            # macro editor re-stages on a timer) is newer and still unsaved
+            snap = self._applying
+            for queue, done in zip((self._pending, self._pending_sensor,
+                                    self._pending_macros), snap):
+                for k, v in done.items():
+                    if queue.get(k) == v:
+                        del queue[k]
             self.pendingChanged.emit()
             if binds:
                 self._set_binds(binds)

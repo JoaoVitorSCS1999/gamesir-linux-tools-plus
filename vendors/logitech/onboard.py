@@ -242,10 +242,7 @@ class OnboardProfile:
         crc_computed = crc16_ccitt(raw[:-2]) if size >= 2 else 0
         resolutions = [int.from_bytes(raw[3 + i * 2:5 + i * 2], 'little')
                        for i in range(N_RESOLUTIONS)]
-        try:
-            name = raw[160:208].decode('utf-16le').rstrip('\x00').rstrip('￿')
-        except Exception:
-            name = ''
+        name = cls._name_of(raw)
         buttons = [Button.decode(raw[32 + i * 4:36 + i * 4]) for i in range(N_BUTTONS)]
         gbuttons = [Button.decode(raw[96 + i * 4:100 + i * 4]) for i in range(N_BUTTONS)]
         return cls(
@@ -283,16 +280,31 @@ class OnboardProfile:
         # Only overwrite the name region when a name is actually set. An empty
         # name is preserved from raw — this device fills it with 0x00 (not the
         # 0xFF Solaar assumes), so preserving raw sidesteps the convention.
-        if self.name:
+        # ... and an UNCHANGED name keeps its raw bytes too, whatever its padding:
+        # Solaar fills with 0xFF, this device with 0x00, and re-encoding a
+        # 0xFF-padded name with 0x00 broke decode(raw).to_bytes() == raw, so the
+        # safety gate refused every edit to that profile.
+        if self.name and self.name != self._name_of(self.raw):
             buf[160:208] = self._encode_name()
         crc = crc16_ccitt(bytes(buf[:-2]))
         buf[-2:] = crc.to_bytes(2, 'big')
         return bytes(buf)
 
+    @staticmethod
+    def _name_of(raw):
+        try:
+            return bytes(raw[160:208]).decode('utf-16le').rstrip('\x00').rstrip('\uffff')
+        except Exception:
+            return ''
+
     def _encode_name(self):
-        # 48 bytes: UTF-16LE, up to 24 chars, NUL-padded. Only called for a
-        # non-empty name (empty names are preserved from raw by to_bytes).
-        return self.name[:24].ljust(24, '\x00').encode('utf-16le')
+        # 48 bytes: UTF-16LE, padded the way this sector already pads (0xFF or
+        # 0x00), and never longer than the field -- an emoji is two UTF-16 units,
+        # so 24 characters can be more than 48 bytes. Only called for a changed,
+        # non-empty name (see to_bytes).
+        fill = 0xFF if bytes(self.raw[206:208]) == b'\xff\xff' else 0x00
+        enc = self.name.encode('utf-16le')[:48]
+        return enc + bytes([fill]) * (48 - len(enc))
 
     # --- editing API: mutate fields; to_bytes() serializes via read-modify-write ---
     def set_button(self, i, btn):

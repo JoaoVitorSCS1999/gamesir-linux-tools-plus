@@ -210,6 +210,28 @@ def max_macro_bytes(sector_size, sectors=MAX_MACRO_SECTORS):
     return sectors * (sector_size - 5)
 
 
+def _revert(dev, sector, raw, size):
+    """Put a sector back after a failed write and READ IT BACK: the message to
+    the user may only say "reverted" when the revert is confirmed."""
+    try:
+        dev.write_sector(sector, raw)
+        return dev.read_sector(sector, size) == raw
+    except Exception:
+        return False
+
+
+def _failed(why, dev, sector, raw, size, backup=None):
+    if _revert(dev, sector, raw, size):
+        return False, f'{why} — reverted to your previous settings'
+    where = f' from {os.path.basename(backup)}' if backup else ' from the safety backup'
+    return False, f"{why}, and the revert couldn't be confirmed — restore{where}"
+
+
+class MacroScanError(Exception):
+    """The macro reference scan couldn't complete (an unreadable sector, or a
+    macro written by other software in a form we don't decode)."""
+
+
 def free_macro_sectors(dev, info, headers):
     """Every macro-region sector a new macro may be written to: ERASED (all-0xFF),
     not the directory / a listed profile, AND NOT REFERENCED by any button. The
@@ -221,8 +243,10 @@ def free_macro_sectors(dev, info, headers):
     listed = {s for s, _ in headers} | {0x0000}
     try:
         refs = referenced_macro_sectors(dev, info, headers)
-    except Exception:
-        return []
+    except Exception as e:
+        # NOT "no free slots": that told the user to use "Free unused slots",
+        # which refuses for this same reason and never says why
+        raise MacroScanError(str(e)) from e
     size = info['sector_size']
     out = []
     for s in range(info['profile_count'] + 1, info['sector_count']):
@@ -480,15 +504,9 @@ def apply_bindings(dev, info, headers, sector, button_changes=None,
     try:
         dev.write_sector(sector, new_bytes)
         if dev.read_sector(sector, size) != new_bytes:
-            dev.write_sector(sector, raw)                 # revert
-            return False, 'read-back mismatch — reverted to original'
+            return _failed('read-back mismatch', dev, sector, raw, size, path)
     except Exception as e:
-        try:
-            dev.write_sector(sector, raw)                 # revert
-        except Exception as e2:
-            return False, (f'write failed ({e}) AND restore failed ({e2}) — '
-                           f'restore manually from {os.path.basename(path)}')
-        return False, f'write failed ({e}) — reverted to original'
+        return _failed(f'write failed ({e})', dev, sector, raw, size, path)
     n = (len(button_changes) + len(gshift_changes) + len(dpi_changes)
          + sum(k in sensor for k in ('dpi_default', 'dpi_shift', 'report_rate_hz')))
     return True, f'applied {n} change{"" if n == 1 else "s"} (backup {os.path.basename(path)})'
@@ -562,14 +580,9 @@ def reset_profile_to_oob(dev, info, headers, sector, oob_sector, backup_headers=
     try:
         dev.write_sector(sector, payload)
         if dev.read_sector(sector, size) != payload:
-            dev.write_sector(sector, raw)                  # revert
-            return False, 'read-back mismatch - reverted to your settings'
+            return _failed('read-back mismatch', dev, sector, raw, size)
     except Exception as e:
-        try:
-            dev.write_sector(sector, raw)
-        except Exception as e2:
-            return False, f'write failed ({e}) AND restore failed ({e2})'
-        return False, f'write failed ({e}) - reverted to your settings'
+        return _failed(f'write failed ({e})', dev, sector, raw, size)
     return True, 'reset to factory defaults'
 
 
@@ -585,12 +598,12 @@ def rename_profile(dev, info, headers, sector, name, backup_headers=None):
     if sector not in [h[0] for h in headers]:
         return False, f'sector 0x{sector:04x} is not a profile'
     name = str(name).strip()
-    if len(name) > 24:
-        return False, 'a profile name can be at most 24 characters'
     try:
-        name.encode('utf-16le')
+        units = len(name.encode('utf-16le')) // 2
     except UnicodeEncodeError:
         return False, 'that name has characters the mouse cannot store'
+    if units > 24:          # UTF-16 units, the field's real limit: an emoji is 2
+        return False, 'a profile name can be at most 24 characters (an emoji counts as 2)'
 
     raw = dev.read_sector(sector, size)
     prof = onboard.OnboardProfile.decode(raw, sector=sector)
@@ -621,14 +634,9 @@ def rename_profile(dev, info, headers, sector, name, backup_headers=None):
     try:
         dev.write_sector(sector, new_bytes)
         if dev.read_sector(sector, size) != new_bytes:
-            dev.write_sector(sector, raw)                  # revert
-            return False, 'read-back mismatch — reverted to original'
+            return _failed('read-back mismatch', dev, sector, raw, size)
     except Exception as e:
-        try:
-            dev.write_sector(sector, raw)
-        except Exception as e2:
-            return False, f'write failed ({e}) AND restore failed ({e2})'
-        return False, f'write failed ({e}) — reverted to original'
+        return _failed(f'write failed ({e})', dev, sector, raw, size)
     return True, f'renamed to "{name}"' if name else 'name cleared'
 
 
@@ -710,7 +718,12 @@ def apply_edits(dev, info, headers, sector, button_changes=None, gshift_changes=
             except OSError as e:
                 return False, f'could not save the safety backup ({e}) — nothing was changed'
             need = sum(len(c) for _, c in to_write)
-            free = free_macro_sectors(dev, info, headers)
+            try:
+                free = free_macro_sectors(dev, info, headers)
+            except MacroScanError as e:
+                return False, ("couldn't work out which macro slots are in use "
+                               f'({e}), so no macro was written. A macro saved by '
+                               'other software may be in a form Deadband doesn\'t read yet.')
             if len(free) < need:
                 return False, (f'not enough free macro slots — {len(free)} free, '
                                f'need {need} (use "Free unused slots", or clear a macro)')

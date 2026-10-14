@@ -168,6 +168,61 @@ def main():
     check('junk factory data is refused', not ok, msg)
     check('...and the live profile is untouched', dev.read_sector(4, SIZE) == live)
 
+    print('\n== review 2026-10-14 (L4, L5, L7, L8, L9) ==')
+    # L5: a name padded with 0xFF (Solaar's convention) must round-trip, or the
+    # safety gate refuses every edit to that profile
+    dev = FakeMouse()
+    raw = bytearray(dev.s[3])
+    raw[160:208] = 'abc'.encode('utf-16le') + b'\xff' * 42
+    raw[-2:] = onboard.crc16_ccitt(bytes(raw[:-2])).to_bytes(2, 'big')
+    dev.s[3] = raw
+    check('a 0xFF-padded name round-trips',
+          onboard.OnboardProfile.decode(bytes(raw)).to_bytes() == bytes(raw))
+    ok, msg = config.apply_edits(dev, INFO, HEADERS, 3, sensor={'dpi': {0: 1600}})
+    check('...so that profile can still be edited', ok, msg)
+    ok, msg = config.rename_profile(dev, INFO, HEADERS, 3, 'xyz')
+    check('...and renamed, keeping its 0xFF padding',
+          ok and bytes(dev.s[3][166:208]) == b'\xff' * 42, msg)
+    # L8: the limit is 24 UTF-16 units; an emoji is two
+    ok, msg = config.rename_profile(dev, INFO, HEADERS, 2, '🎮' * 13)
+    check('13 emoji (26 UTF-16 units) are refused clearly', not ok and 'at most 24' in msg, msg)
+    ok, msg = config.rename_profile(dev, INFO, HEADERS, 2, '🎮 Gaming 🎮')
+    check('a short emoji name fits', ok and len(dev.s[2]) == SIZE, msg)
+    # L9: out-of-range macro steps are refused, not silently wrapped
+    for label, fn in (('scroll 200', lambda: config.macros.wheel(200)),
+                      ('mouse button 17', lambda: config.macros.mouse_press(1 << 16))):
+        try:
+            fn()
+            check(f'{label} is refused', False)
+        except ValueError as e:
+            check(f'{label} is refused', True, str(e))
+    check('scroll -128..127 still encodes',
+          config.macros.wheel(-128)[1] == 0x80 and config.macros.wheel(127)[1] == 0x7f)
+    # L4: a revert that doesn't read back must not claim "reverted"
+    class StuckMouse(FakeMouse):
+        def write_sector(self, sec, data):
+            pass                                    # nothing ever lands
+    dev = StuckMouse()
+    ok, msg = config.rename_profile(dev, INFO, HEADERS, 2, 'New')
+    check('a write that never lands is reported', not ok, msg)
+    class RevertFails(FakeMouse):
+        def write_sector(self, sec, data):
+            self.s[sec] = bytearray(b'\x00' * len(data))   # corrupts every write
+    dev = RevertFails()
+    ok, msg = config.rename_profile(dev, INFO, HEADERS, 2, 'New')
+    check("an unconfirmed revert doesn't say reverted",
+          not ok and "couldn't be confirmed" in msg, msg)
+    # L7: an unreadable macro map is named as such, not "0 free slots"
+    dev = FakeMouse()
+    real = config.referenced_macro_sectors
+    config.referenced_macro_sectors = lambda *a: (_ for _ in ()).throw(ValueError('opcode 0x99'))
+    try:
+        ok, msg = config.apply_edits(dev, INFO, HEADERS, 1, macro_changes={3: macro('x')})
+        check('an incomplete macro scan says so', not ok and 'in use' in msg
+              and 'Free unused' not in msg, msg)
+    finally:
+        config.referenced_macro_sectors = real
+
     print()
     if failures:
         print(f'FAILED ({len(failures)}): ' + '; '.join(failures))

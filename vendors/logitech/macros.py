@@ -184,11 +184,21 @@ def release(key, mod=0):
     return bytes([OP_KEY_RELEASE, mod & 0xFF, key & 0xFF])
 
 
+def _mouse_mask(mask):
+    # 16 buttons fit the BE u16 mask; button 17 (1 << 16) used to encode as 0x0000,
+    # a press that presses nothing, stored and reported as applied
+    if not 0 < mask <= 0xFFFF:
+        raise ValueError(f'mouse button mask 0x{mask:x} is out of range (buttons 1-16)')
+    return mask
+
+
 def mouse_press(mask):
+    mask = _mouse_mask(mask)
     return bytes([OP_MOUSE_PRESS, (mask >> 8) & 0xFF, mask & 0xFF])
 
 
 def mouse_release(mask):
+    mask = _mouse_mask(mask)
     return bytes([OP_MOUSE_RELEASE, (mask >> 8) & 0xFF, mask & 0xFF])
 
 
@@ -200,12 +210,19 @@ def consumer_release(code):
     return bytes([OP_CONSUMER_RELEASE, (code >> 8) & 0xFF, code & 0xFF])
 
 
+def _i8(delta):
+    # the step stores a signed byte: 200 used to wrap to -56 and scroll backwards
+    if not -128 <= int(delta) <= 127:
+        raise ValueError(f'scroll amount {delta} is out of range (-128 to 127)')
+    return int(delta) & 0xFF                               # i8 two's-complement
+
+
 def wheel(delta):
-    return bytes([OP_MOUSE_WHEEL, delta & 0xFF])          # i8 two's-complement
+    return bytes([OP_MOUSE_WHEEL, _i8(delta)])
 
 
 def hwheel(delta):
-    return bytes([OP_MOUSE_HWHEEL, delta & 0xFF])
+    return bytes([OP_MOUSE_HWHEEL, _i8(delta)])
 
 
 def jump(sector, offset=0):
