@@ -112,14 +112,57 @@ def set_profile(n, gen=None):
     profiles through here, and each has an unguarded trailing
     `set_profile(original)` that would otherwise fire even for a model with no
     editable banks."""
+    global _switch_target, _switch_sent_seq
     if not profiles.active().software_profile_switch:
         return False
-    return send_cmd(0x0F, 0x07, n, gen=gen)
+    from gs_state import state
+    seq = state.get('profile_seq', 0)
+    if not send_cmd(0x0F, 0x07, n, gen=gen):
+        return False
+    _switch_target, _switch_sent_seq = n, seq
+    return True
+
+
+# The profile the reader last heard is only trustworthy if it heard it AFTER the
+# most recent switch command: until then state['profile'] is the old answer (the
+# G7 Pro is only asked every ~4 s). Every reply bumps state['profile_seq'].
+_switch_target = None       # profile the latest 0x07 asked for
+_switch_sent_seq = None     # state['profile_seq'] when it was sent
+
+
+def _answered_since_switch():
+    from gs_state import state
+    return _switch_sent_seq is None or state.get('profile_seq', 0) > _switch_sent_seq
+
+
+def profile_confirmed(n):
+    """The pad has REPORTED profile `n` since the last switch command."""
+    from gs_state import state
+    return state.get('profile') == n and _answered_since_switch()
+
+
+def expected_profile():
+    """The profile the pad is on, or is being switched to: a just-requested
+    switch counts before the pad has answered it."""
+    from gs_state import state
+    return state.get('profile') if _answered_since_switch() else _switch_target
+
+
+def _query_profile(gen):
+    """Ask the pad which profile is active now, instead of waiting for the
+    session's own poll (every ~1 s on the Cyclone family, ~4 s on the G7 Pro)."""
+    if profiles.active().write_style == 'g7':
+        g7_query_info(0x0B, gen)
+    else:
+        send_cmd(0x0F, 0x0B, probe=True)
+
+
+
 
 
 def switch_profile(n, gen=None, check=None, tries=3, confirm=2.5, settle=0.2):
-    """Switch the pad to profile `n` and CONFIRM it: the reader publishes the
-    pad's own answer to the periodic get-profile query as state['profile'].
+    """Switch the pad to profile `n` and CONFIRM it from a reply that arrived
+    AFTER the switch command (see profile_confirmed).
 
     The ONE place a whole-pad walk or a Save switches profile. A profile bank
     only takes reads/writes while that profile is active, so acting on an
@@ -127,28 +170,36 @@ def switch_profile(n, gen=None, check=None, tries=3, confirm=2.5, settle=0.2):
     re-sent (`tries` in all); a refused one (no device, a model with no
     software switch, a stale `gen`) fails at once rather than waiting. `check`
     is the caller's session check, run on every poll -- it raises to abort.
-    After a confirmed switch, wait `settle` so the first bank command isn't
-    sent back-to-back with the switch (the controller drops those)."""
-    from gs_state import state
+    The pad is asked for its profile straight after each switch, and every
+    second while waiting. After a switch, wait `settle` so the first bank
+    command isn't sent back-to-back with it (the controller drops those)."""
+    sent = False
     for _ in range(tries):
         if check:
             check()
         if gen is not None and gen != _generation:
             return False
-        if state.get('profile') == n:
-            time.sleep(settle)
+        if profile_confirmed(n):
+            if sent:
+                time.sleep(settle)
             return True
         if not set_profile(n, gen=gen):
             return False
-        deadline = time.monotonic() + confirm
-        while time.monotonic() < deadline:
+        sent = True
+        start = time.monotonic()
+        asked = 0.0
+        while time.monotonic() - start < confirm:
             if check:
                 check()
             if gen is not None and gen != _generation:
                 return False
-            if state.get('profile') == n:
+            if profile_confirmed(n):
                 time.sleep(settle)
                 return True
+            waited = time.monotonic() - start
+            if waited >= 0.15 and (asked == 0.0 or waited - asked >= 1.0):
+                _query_profile(gen)
+                asked = waited
             time.sleep(0.04)
     return False
 

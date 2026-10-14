@@ -24,7 +24,8 @@ class FakePad:
 
     def set_profile(self, n, gen=None):
         if n not in self.stuck:
-            state['profile'] = n         # what the reader would publish
+            state['profile'] = n         # what the reader would publish...
+            state['profile_seq'] = state.get('profile_seq', 0) + 1   # ...as a fresh reply
         return True
 
     def write_reg(self, bank, addr, data, write_style=None, gen=None):
@@ -52,10 +53,13 @@ class BackupProfileSwitchTests(unittest.TestCase):
     def setUp(self):
         self.old = profiles.active()
         profiles.set_active(profiles.CYCLONE)
+        self.real_set_profile = control.set_profile
         self.pad = FakePad()
         self.tmp = tempfile.TemporaryDirectory()
         self.patches = [
-            patch.dict(state, profile=1, connected=True),
+            patch.dict(state, profile=1, profile_seq=0, connected=True),
+            patch.object(control, '_switch_sent_seq', None),
+            patch.object(control, '_switch_target', None),
             patch.object(control, 'set_profile', self.pad.set_profile),
             patch.object(control, 'write_reg', self.pad.write_reg),
             patch.object(control, 'request_regs', self.pad.request_regs),
@@ -198,9 +202,37 @@ class BackupProfileSwitchTests(unittest.TestCase):
             self.assertLess(time.monotonic() - t, 2.0)    # no 3 x confirm stall
         self.assertEqual(sent, [])
 
+    # --- bridge + reader pass (B1, B4): only a reply AFTER a switch counts ---
+    def test_a_stale_answer_does_not_confirm_a_switch(self):
+        sent = []
+        with patch.object(control, 'send_cmd', lambda *a, **k: sent.append(a) or True), \
+             patch.object(control, 'set_profile', self.real_set_profile):
+            state.update(profile=2, profile_seq=5)
+            self.assertTrue(control.set_profile(1))
+            self.assertFalse(control.profile_confirmed(2))     # the old answer, not current
+            self.assertFalse(control.profile_confirmed(1))     # not answered yet
+            self.assertEqual(control.expected_profile(), 1)    # but it's where we're headed
+            state.update(profile=1, profile_seq=6)             # the pad answers
+            self.assertTrue(control.profile_confirmed(1))
+            self.assertEqual(control.expected_profile(), 1)
 
-class ResetAllProfilesTests(BackupProfileSwitchTests.__base__):
-    """Reset-all walks every profile too (finding C6): same confirmed switch."""
+    def test_switch_asks_the_pad_instead_of_waiting_for_its_poll(self):
+        asked = []
+        def send(*a, **k):
+            if a[:2] == (0x0F, 0x0B):
+                asked.append(a)
+                state.update(profile=3, profile_seq=state.get('profile_seq', 0) + 1)
+            return True
+        with patch.object(control, 'send_cmd', send), \
+             patch.object(control, 'set_profile', self.real_set_profile):
+            t = time.monotonic()
+            self.assertTrue(control.switch_profile(3, confirm=2.5, settle=0))
+            self.assertLess(time.monotonic() - t, 1.0)
+        self.assertTrue(asked)
+
+
+class _BridgeCase(BackupProfileSwitchTests.__base__):
+    """The bridge's own profile walks, on the same fake pad."""
 
     def setUp(self):
         os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
@@ -212,6 +244,14 @@ class ResetAllProfilesTests(BackupProfileSwitchTests.__base__):
         import vendors.gamesir.models.cyclone2.factory as factory
         self.patches.append(patch.object(factory, 'write_reg', self.pad.write_reg))
         self.patches[-1].start()
+        # the bridge calls switch_profile with its real 2.5 s window; shorten it
+        real = control.switch_profile
+        def quick(n, gen=None, check=None, **k):
+            k.setdefault('confirm', 0.05)
+            k.setdefault('settle', 0)
+            return real(n, gen=gen, check=check, **k)
+        self.patches.append(patch.object(control, 'switch_profile', quick))
+        self.patches[-1].start()
         from bridge import GamesirBridge
         self.bridge = GamesirBridge()
         self.bridge._prof = profiles.CYCLONE
@@ -220,6 +260,10 @@ class ResetAllProfilesTests(BackupProfileSwitchTests.__base__):
 
     def tearDown(self):
         BackupProfileSwitchTests.tearDown(self)
+
+
+class ResetAllProfilesTests(_BridgeCase):
+    """Reset-all walks every profile too (finding C6): same confirmed switch."""
 
     def reset_all(self):
         with patch.object(threading.Thread, 'start', lambda t: t.run()):
@@ -243,6 +287,43 @@ class ResetAllProfilesTests(BackupProfileSwitchTests.__base__):
         self.assertTrue(ok, msg)
         self.assertEqual(state['profile'], 1)
         self.assertEqual({b for b, _a in self.pad.written_while if b < 5}, {1, 2, 3, 4})
+
+
+
+class SaveProfileSwitchTests(_BridgeCase):
+    """Save switches to the edited profile and back (findings B1, B2)."""
+
+    def save(self):
+        with patch.object(threading.Thread, 'start', lambda t: t.run()):
+            self.bridge.applyConfig()
+        self.app.processEvents()
+        return self.bridge._apply_status
+
+    def stage(self, bank, value):
+        addr, ln, _name = backup._profile_fields()[0]
+        self.bridge._pending[(bank, addr)] = {'addr': addr, 'bank': bank, 'data': [value] * ln,
+                                              'label': 'x', 'display': 'y'}
+
+    def test_two_quick_saves_both_land_on_the_edited_profile(self):
+        state.update(selected='x', driving='x', edit_profile=2)
+        self.bridge._driving = 'x'
+        for value in (7, 9):
+            self.stage(2, value)
+            self.assertIn('Applied', self.save())
+            self.assertEqual(state['profile'], 1)          # back on the user's profile
+        for bank, active in self.pad.written_while:
+            if bank in (1, 2, 3, 4):
+                self.assertEqual(bank, active, 'a profile bank was written while another was active')
+
+    def test_a_save_that_never_switched_doesnt_switch_back(self):
+        state.update(selected='x', driving='x', edit_profile=1)
+        self.bridge._driving = 'x'
+        sent = []
+        real = self.pad.set_profile
+        with patch.object(control, 'set_profile', lambda n, gen=None: sent.append(n) or real(n)):
+            self.stage(1, 5)
+            self.assertIn('Applied', self.save())
+        self.assertEqual(sent, [])
 
 
 if __name__ == '__main__':

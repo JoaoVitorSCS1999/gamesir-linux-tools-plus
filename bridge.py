@@ -2773,7 +2773,8 @@ class GamesirBridge(QObject):
                                    for bank in g7se.RATE_BANKS)
         prof, gen = self._prof, control.generation()
         edit_profile = state.get('edit_profile') or state.get('profile')
-        original_profile = state.get('profile')
+        original_profile = control.expected_profile()
+        switched = [False]          # did select() move off the user's profile?
         self._backup_busy = True
         self.backupBusyChanged.emit()
         self._set_apply_status('Backing up and applying…')
@@ -2791,9 +2792,13 @@ class GamesirBridge(QObject):
             check_session()
             if prof is profiles.G7_SE:
                 return  # SE bank reads/writes do not require activating the bank.
-            if bank in prof.profile_banks and state.get('profile') != bank:
+            if bank in prof.profile_banks:
                 # the shared confirmed switch (never a raw 0x07: set_profile
-                # refuses models where it's destructive, e.g. the Kaleid)
+                # refuses models where it's destructive, e.g. the Kaleid). It
+                # returns at once, without settling, when the pad has already
+                # confirmed `bank`.
+                if not control.profile_confirmed(bank):
+                    switched[0] = True
                 if not control.switch_profile(bank, gen=gen, check=check_session):
                     raise OSError('could not switch to the edited profile')
 
@@ -2874,10 +2879,15 @@ class GamesirBridge(QObject):
             except Exception as e:
                 self._set_apply_status(f'Apply refused: {e}')
             finally:
-                if (prof is not profiles.G7_SE and original_profile in prof.profile_banks and gen == control.generation()
+                # back to the user's profile -- only if Save left it, and
+                # confirmed, so the next Save can't trust a stale answer
+                if (switched[0] and prof is not profiles.G7_SE
+                        and original_profile in prof.profile_banks and gen == control.generation()
                         and self._prof is prof and profiles.active() is prof
                         and self._driving == state.get('driving') == state.get('selected')):
-                    control.set_profile(original_profile, gen=gen)
+                    if not control.switch_profile(original_profile, gen=gen):
+                        self._set_apply_status(self._apply_status + '  · the controller may still '
+                                               f'be on another profile; switch back to {original_profile}')
                 self._backup_busy = False
                 self.backupBusyChanged.emit()
         threading.Thread(target=run, daemon=True).start()
@@ -3006,8 +3016,8 @@ class GamesirBridge(QObject):
         """Reset the active profile to defaults, then re-read so every page
         reflects it. Models with a captured factory image (Cyclone) restore the
         exact out-of-box bytes; others (8K) get a field-by-field default write."""
-        if not self.profileResetSupported:
-            return
+        if not self.profileResetSupported or self._backup_busy:
+            return          # a Save, restore or reset-all walk is switching profiles
         bank = self._prof.profile_bank(state['profile'])
         if bank is None:
             return
@@ -3042,26 +3052,32 @@ class GamesirBridge(QObject):
         self.backupBusyChanged.emit()
         style = prof.write_style
         gen = control.generation()
-        original = state.get('profile') or banks[0]
+        original = control.expected_profile() or banks[0]
         def run():
             try:
+                def stop(why, n):
+                    left = (f"profile {n} wasn't" if n == banks[-1]
+                            else f"profiles {n}–{banks[-1]} weren't")
+                    if gen != control.generation():
+                        why = 'The controller disconnected, or another one was selected'
+                    else:
+                        control.switch_profile(original, gen=gen)
+                    self._backup_done(False, f'{why}, so {left} reset. Try again.')
                 for i, n in enumerate(banks):
                     # confirmed: an unconfirmed switch would write profile n's
                     # defaults into whichever profile is still active
                     if not control.switch_profile(n, gen=gen):
-                        control.switch_profile(original, gen=gen)
-                        self._backup_done(False, f"The controller didn't switch to profile "
-                                                 f"{n}, so profiles {n}-{banks[-1]} weren't "
-                                                 'reset. Try again.')
-                        return
+                        return stop(f"The controller didn't switch to profile {n}", n)
                     if prof.factory_reset:
                         factory.restore_default_profile(n, write_style=style, gen=gen)
                     else:
                         self._write_generic_defaults(n, style, gen)
+                    # still on n? an on-pad switch mid-write lands elsewhere
+                    if state.get('profile') != n:
+                        return stop(f'The controller changed profile while profile {n} '
+                                    'was being reset', n)
                     self.backupProgress.emit(i + 1, len(banks))
                 back = control.switch_profile(original, gen=gen)
-                self._loaded_profile = None
-                self._loaded_led_slot = None
                 self._backup_done(True, 'Reset all %d profiles to defaults.' % len(banks)
                                   + ('' if back else ' The controller may still be on another '
                                      f'profile; switch it back to profile {original}.'))

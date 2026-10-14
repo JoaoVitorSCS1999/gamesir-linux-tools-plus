@@ -211,6 +211,7 @@ def read_session(device, driving_id):
                 continue
             if data[0] == 0x10 and data[1] == 0x0C:     # get-profile reply
                 state['profile'] = data[2]
+                state['profile_seq'] = state.get('profile_seq', 0) + 1   # see control.profile_confirmed
                 state['edit_profile'] = data[2]
                 continue
             if data[0] == 0x10 and data[1] == 0x05:     # read-register reply
@@ -230,8 +231,10 @@ def read_session(device, driving_id):
                 continue
             state['mode_ok'] = True
             state.update(parse_enhanced(data))
-    except Exception:
-        pass
+    except Exception as exc:
+        # The session ends either way (unplug, EIO, a short report); say why
+        # instead of the pad just blinking out and back with nothing logged.
+        print(f'[reader] vendor session for {driving_id} ended: {exc!r}', flush=True)
     finally:
         alive[0] = False
         control.clear_device()
@@ -806,6 +809,7 @@ def read_session_seusb(ctrl):
                     and report[2] == query_sequence and report[3:5] == b'\x3c\x0c'
                     and report[5] in g7se.PROFILE_BANKS):
                 state['profile'] = report[5]
+                state['profile_seq'] = state.get('profile_seq', 0) + 1
                 if state.get('edit_profile') is None:
                     state['edit_profile'] = report[5]
             elif len(report) >= 18 and report[0] == 0x20:
@@ -915,6 +919,7 @@ def read_session_g7usb(ctrl):
                     active = report[5]
                     if 1 <= active <= 4:
                         state['profile'] = active
+                        state['profile_seq'] = state.get('profile_seq', 0) + 1
                         if state.get('edit_profile') is None:
                             state['edit_profile'] = active
                 elif report[4] == 0x0A:
