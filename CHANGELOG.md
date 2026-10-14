@@ -62,6 +62,11 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 - "Reset all profiles" now reports a profile whose defaults couldn't all be
   written, and writes the shared lighting once instead of once per profile.
 - G7 Pro: unusual firmware-version text could end the configuration session.
+- **Mouse (G502 X): not found over its wireless receiver on newer kernels.**
+  Linux 7.2's Logitech receiver driver answers with the mouse's receiver
+  address (1) where older kernels translated it, and Deadband ignored those
+  replies, so a mouse in use the whole time showed as missing. Deadband now
+  tries both addresses, and finds the mouse faster (0.7 s instead of up to ~8 s).
 - **Mouse (G502 X):**
   - A change made while an Apply was running (including the macro editor's own
     auto-save) was silently dropped; only what the Apply wrote is now cleared.

@@ -122,7 +122,10 @@ class Hidpp:
         # hidapi's write wants report id as first byte; hidraw has no numbered
         # report here, so we prepend a 0 only if the platform needs it. On Linux
         # hidraw, the report id IS the first byte of the buffer.
-        self._dev.write(list(frame))
+        if self._dev.write(list(frame)) < 0:
+            # this interface doesn't take HID++ (the receiver's keyboard/mouse
+            # collections): no reply is coming, so don't wait for one
+            raise OSError('HID++ write refused by this interface')
 
         deadline = time.time() + self.timeout_ms / 1000.0
         while time.time() < deadline:
@@ -452,18 +455,27 @@ def find_device(pids=G502X_PIDS):
     """Open the hidraw node that actually speaks HID++ for the target mouse.
     Tries each candidate interface with a ROOT ping; returns an open Hidpp, or
     None if nothing answered. READ-ONLY (ping only)."""
+    # Device address: 0xFF is the device itself (wired, or a kernel that
+    # translates on the paired device's own node); 0x01 is the first device
+    # behind a receiver. Linux 7.2's hid-logitech-dj answers on the mouse's own
+    # node with 0x01 even when asked as 0xFF, and request() drops a reply from
+    # another address -- so the mouse, in use the whole time, read as absent.
+    # Probe with a short wait so the extra address costs well under a second.
     for path in _candidate_paths(pids):
-        try:
-            h = Hidpp(path)
-            h.ping()                       # only the HID++ collection replies
-            # make sure the onboard feature is really there before claiming it
-            if h.get_feature_index(FEATURE_ONBOARD_PROFILES):
-                return h
-            h.close()
-        except (HidppError, TimeoutError, OSError, ValueError):
+        for index in (0xFF, 0x01):
+            h = None
             try:
+                h = Hidpp(path, device_index=index, timeout_ms=600)
+                h.ping()                   # only the HID++ collection replies
+                # make sure the onboard feature is really there before claiming it
+                if h.get_feature_index(FEATURE_ONBOARD_PROFILES):
+                    h.timeout_ms = 2000
+                    return h
                 h.close()
-            except Exception:
-                pass
-            continue
+            except (HidppError, TimeoutError, OSError, ValueError):
+                if h is not None:
+                    try:
+                        h.close()
+                    except Exception:
+                        pass
     return None
