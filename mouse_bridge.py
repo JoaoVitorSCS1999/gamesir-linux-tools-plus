@@ -585,6 +585,15 @@ class MouseBridge(QObject):
 
     # ------------------------------------------------------------- worker thread
     def _refresh_worker(self):
+        # ALWAYS report back: refresh() runs one worker at a time, so a worker
+        # that died on an unexpected error (another program holding the mouse,
+        # say) would block every later refresh until restart
+        try:
+            self._refresh_inner()
+        except Exception as e:
+            self._refreshDone.emit(False, f'read error: {e}', 0, 0, -1, False, {}, [])
+
+    def _refresh_inner(self):
         with self._io:
             pid = self._node_pid()
             wireless = pid is not None and pid != 0xC098
