@@ -97,7 +97,13 @@ def main():
     if not engine.rootObjects():
         sys.exit('Failed to load QML.')
 
-    sys.exit(app.exec())
+    code = app.exec()
+    # Tear the QML down while `bridge` and `mouse` still exist. Left to Python's
+    # exit, they could go first and every binding on them would log "Cannot
+    # read property ... of null" -- hundreds of lines burying a bug report's
+    # real errors (#28).
+    del engine
+    sys.exit(code)
 
 
 if __name__ == '__main__':

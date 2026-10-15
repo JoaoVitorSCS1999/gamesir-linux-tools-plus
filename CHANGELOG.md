@@ -7,6 +7,16 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+### Added
+- `deadband --doctor --probe`: opt-in, read-only device questions for bug
+  reports — a G502 X's firmware, onboard-profile layout and per-profile
+  checksums (and where a mismatched one really sits), and whether an
+  unsupported GameSir controller answers the family protocol.
+
+### Fixed
+- Closing Deadband printed hundreds of "Cannot read property … of null" lines;
+  the interface is now torn down before the parts it reads from.
+
 ## [0.5.0] — 2026-10-13
 
 ### Added

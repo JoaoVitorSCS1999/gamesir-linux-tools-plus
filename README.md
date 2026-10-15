@@ -323,6 +323,11 @@ commands for your distro (NixOS included). Use **Copy report** to paste the
 result into a GitHub issue. The app shows the same guidance in a banner
 whenever it finds a device it can't open.
 
+If an issue asks for it, `deadband --doctor --probe` adds a few **read-only**
+questions to the devices themselves (close Deadband first): a G502 X's
+firmware and profile checksums, and whether an unsupported GameSir controller
+answers the protocol the supported ones use. It never changes a setting.
+
 ## Safety
 
 Short version: this app changes controller **settings**, not firmware, and

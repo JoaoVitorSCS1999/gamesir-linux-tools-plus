@@ -824,8 +824,163 @@ def format_report(rep):
     return '\n'.join(L)
 
 
+# --------------------------------------------------------------- --probe
+# Opt-in, READ-ONLY device questions for a bug report: things the plain report
+# can't know without talking to the device. Nothing here writes a setting.
+
+def _probe_mouse():
+    """G502 X: firmware, onboard-profile layout and every profile's checksum --
+    and, where a checksum doesn't match, where in the sector one DOES (that
+    would point at a different profile size/format, issue #28)."""
+    out = ['### Probe: Logitech G502 X']
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(here, 'vendors', 'logitech'))
+    try:
+        import hidpp
+        import onboard
+    except Exception as e:
+        return out + [f'- could not load the mouse code: {e}']
+    try:
+        dev = hidpp.find_device()
+    except Exception as e:
+        return out + [f'- lookup failed: {e!r}']
+    if dev is None:
+        return out + ['- no G502 X answered (off, asleep, or not connected)']
+    with dev:
+        path = dev.path.decode() if isinstance(dev.path, bytes) else dev.path
+        out.append(f'- answered on {path} as device 0x{dev.device_index:02x}')
+        try:
+            fi = dev.get_feature_index(0x0003)            # DEVICE_FW_VERSION
+            if fi:
+                for e in range(dev.request(fi, 0)[0]):
+                    d = dev.request(fi, 1, bytes([e]))
+                    name = bytes(d[1:4]).decode('ascii', 'replace').strip('\x00 ')
+                    if not name and not any(d[4:8]):
+                        continue                          # an unused slot
+                    out.append(f'- firmware entity {e}: type {d[0]} {name} '
+                               f'{d[4]:02x}.{d[5]:02x} build {int.from_bytes(d[6:8], "big"):04x}')
+        except Exception as e:
+            out.append(f'- firmware version: unavailable ({e!r})')
+        try:
+            info = dev.onboard_info()
+        except Exception as e:
+            return out + [f'- onboard profiles: unavailable ({e!r})']
+        out.append('- onboard: ' + ', '.join(f'{k} {info[k]}' for k in (
+            'memory_model_id', 'profile_format', 'macro_format', 'profile_count',
+            'oob_count', 'button_count', 'sector_count', 'sector_size')))
+        try:
+            mode = dev.request(info['feature_index'], 0x02)[0]
+            out.append(f'- mode: {"onboard" if mode == 1 else "host" if mode == 2 else mode}, '
+                       f'active profile sector {dev.current_profile()}')
+        except Exception as e:
+            out.append(f'- mode: unavailable ({e!r})')
+        size = info['sector_size']
+        try:
+            headers = dev.profile_headers()
+        except Exception as e:
+            return out + [f'- profile directory: unreadable ({e!r})']
+        for sector, enabled in headers:
+            try:
+                raw = dev.read_sector(sector, size)
+            except Exception as e:
+                out.append(f'- sector {sector}: unreadable ({e!r})')
+                continue
+            stored = int.from_bytes(raw[-2:], 'big')
+            computed = onboard.crc16_ccitt(raw[:-2])
+            line = (f'- sector {sector} (enabled {enabled}): read {len(raw)} bytes, '
+                    f'CRC stored {stored:04x} computed {computed:04x} '
+                    f'{"OK" if stored == computed else "MISMATCH"}')
+            if stored != computed:
+                blank = 'all 0xFF' if set(raw) == {0xFF} else 'all 0x00' if set(raw) == {0} else ''
+                found = [k for k in range(16, len(raw) - 1)
+                         if onboard.crc16_ccitt(raw[:k]) == int.from_bytes(raw[k:k + 2], 'big')]
+                line += (f'; {blank}' if blank else '') + (
+                    f'; a matching CRC sits after byte {found}' if found
+                    else '; no matching CRC anywhere in the sector')
+                line += f'; head {raw[:8].hex(" ")} tail {raw[-6:].hex(" ")}'
+                # a profile one byte longer/shorter than reported would put the
+                # real CRC partly outside what we read: try those sizes too
+                for alt in (size + 1, size - 1):
+                    try:
+                        r2 = dev.read_sector(sector, alt)
+                        ok2 = onboard.crc16_ccitt(r2[:-2]) == int.from_bytes(r2[-2:], 'big')
+                        line += f'; read as {alt} bytes: CRC {"OK" if ok2 else "mismatch"}'
+                    except Exception as e:
+                        line += f'; read as {alt} bytes: refused ({type(e).__name__})'
+            out.append(line)
+    return out
+
+
+def _probe_gamesir():
+    """Unrecognised GameSir pads that declare the family's 0x0f/0x10 vendor
+    reports: ask the family's three READ questions (firmware version, active
+    profile, one 16-byte register read) and print the raw replies. That says
+    whether a new pad speaks the protocol the supported ones do (issue #11)."""
+    import controller_profile as profiles
+    from gs_common import pad
+    try:
+        import hidcompat as hid
+    except Exception as e:
+        return ['### Probe: GameSir', f'- HID library unavailable: {e}']
+    out = ['### Probe: unrecognised GameSir controllers']
+    asked = 0
+    for d in hid.enumerate():
+        if d.get('vendor_id') != 0x3537:
+            continue
+        pid, product = d.get('product_id'), d.get('product_string') or ''
+        if profiles.detect_one(pid, product) is not None:
+            continue                             # supported: nothing to learn
+        path = d.get('path')
+        node = os.path.basename(path.decode() if isinstance(path, bytes) else path)
+        channel = _vendor_channel(os.path.join('/sys/class/hidraw', node))
+        if '0x0f' not in channel or '0x10' not in channel:
+            continue
+        asked += 1
+        out.append(f'- 3537:{pid:04x} "{product}" on /dev/{node} ({channel})')
+        dev = hid.device()
+        try:
+            dev.open_path(path)
+            dev.set_nonblocking(True)
+            for label, cmd in (('firmware (0f 09)', (0x0F, 0x09)),
+                               ('active profile (0f 0b)', (0x0F, 0x0B)),
+                               ('read bank 1 @0x0000 x16 (0f 04)', (0x0F, 0x04, 0x01, 0x00, 0x00, 0x10))):
+                dev.write(pad(*cmd))
+                replies, end = [], time.time() + 0.6
+                while time.time() < end:
+                    r = dev.read(64)
+                    if r and r[0] == 0x10:
+                        replies.append(bytes(r[:24]).hex(' '))
+                    time.sleep(0.01)
+                out.append(f'    {label}: ' + ('; '.join(sorted(set(replies))[:3]) or 'no reply'))
+                time.sleep(0.1)
+        except Exception as e:
+            out.append(f'    could not ask it: {e!r}')
+        finally:
+            try:
+                dev.close()
+            except Exception:
+                pass
+    if not asked:
+        out.append('- none connected (every GameSir device present is already supported)')
+    return out
+
+
+def probe():
+    """The --probe sections, as report lines. Close Deadband first: it holds
+    the same devices."""
+    lines = ['', '## Probe (read-only device questions; close Deadband first)']
+    for part in (_probe_gamesir, _probe_mouse):
+        try:
+            lines += [''] + part()
+        except Exception as e:
+            lines += ['', f'- probe step failed: {e!r}']
+    return '\n'.join(lines)
+
+
 def run_cli():
     print(format_report(collect()))
+    if '--probe' in sys.argv:
+        print(probe())
     return 0
 
 
