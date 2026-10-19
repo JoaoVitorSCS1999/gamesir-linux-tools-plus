@@ -94,4 +94,13 @@ jobs:
           if [[ "$tag" == *-dev* ]]; then
             release_args+=(--prerelease)
           fi
-          gh release create "$tag" "${release_args[@]}" dist/*.rpm
+          set +e
+          publish_output="$(gh release create "$tag" "${release_args[@]}" dist/*.rpm 2>&1)"
+          publish_status=$?
+          set -e
+          if (( publish_status != 0 )); then
+            echo "$publish_output" >> "$GITHUB_STEP_SUMMARY"
+            error_message="$(printf '%s' "$publish_output" | tr '\n' ' ' | cut -c1-1500)"
+            echo "::error title=GitHub release creation failed::$error_message"
+            exit "$publish_status"
+          fi
