@@ -205,6 +205,19 @@ an AUR helper, use the included [`packaging/PKGBUILD`](packaging/PKGBUILD):
 cd packaging && makepkg -si
 ```
 
+### Fedora 44
+
+Download the Fedora 44 `.rpm` from the [GitHub releases page](https://github.com/JoaoVitorSCS1999/gamesir-linux-tools-plus/releases), then install it with DNF:
+
+```sh
+sudo dnf install ./deadband-*.fc44.noarch.rpm
+```
+
+The RPM installs the app launcher, desktop entry, icons, udev rules, and
+dependencies from Fedora's repositories. After installing, unplug and reconnect
+the controller once so the udev permissions take effect. The release workflow
+builds and attaches an RPM whenever a GitHub release is published.
+
 ### NixOS
 
 Use the community flake by

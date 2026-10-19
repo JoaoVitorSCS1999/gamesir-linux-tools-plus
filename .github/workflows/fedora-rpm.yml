@@ -1,0 +1,51 @@
+name: Fedora RPM
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-rpm:
+    name: Build Fedora 44 RPM (x86_64)
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - name: Install RPM build tools
+        run: dnf install -y git-core rpm-build tar gzip gh
+
+      - name: Check out release source
+        uses: actions/checkout@v4
+
+      - name: Build RPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev(\.[0-9]+)?)?$ ]]
+          version="${tag_version/-/~}"
+          top="$RUNNER_TEMP/rpmbuild"
+          mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+          git archive --format=tar --prefix="deadband-${version}/" "$GITHUB_SHA" \
+            | gzip -n > "$top/SOURCES/deadband-${version}.tar.gz"
+          cp packaging/rpm/deadband.spec "$top/SPECS/"
+          rpmbuild -ba "$top/SPECS/deadband.spec" \
+            --define "_topdir $top" --define "app_version $version"
+          mkdir -p dist
+          cp "$top/RPMS/noarch/"*.rpm dist/
+
+      - name: Publish RPM on GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          release_args=(--verify-tag --generate-notes --title "Deadband $tag")
+          if [[ "$tag" == *-dev* ]]; then
+            release_args+=(--prerelease)
+          fi
+          gh release create "$tag" "${release_args[@]}" dist/*.rpm
