@@ -7,6 +7,8 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-19
+
 ### Added
 - `deadband --doctor --probe`: opt-in, read-only device questions for bug
   reports — a G502 X's firmware, onboard-profile layout and per-profile

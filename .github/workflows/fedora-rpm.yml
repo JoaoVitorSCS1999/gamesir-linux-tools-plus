@@ -93,6 +93,8 @@ jobs:
           release_args=(--verify-tag --generate-notes --title "Deadband $tag")
           if [[ "$tag" == *-dev* ]]; then
             release_args+=(--prerelease)
+          else
+            release_args+=(--latest)
           fi
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           set +e
