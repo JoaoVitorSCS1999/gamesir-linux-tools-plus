@@ -28,7 +28,7 @@ jobs:
           tag_version="${GITHUB_REF_NAME#v}"
           [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev(\.[0-9]+)?)?$ ]]
           version="${tag_version/-/~}"
-          top="$RUNNER_TEMP/rpmbuild"
+          top=/tmp/deadband-rpmbuild
           mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "top=$top" >> "$GITHUB_OUTPUT"
@@ -39,11 +39,11 @@ jobs:
           RPM_TOP: ${{ steps.release.outputs.top }}
         run: |
           set -euo pipefail
-          tar --exclude-vcs \
+          tar -C "$GITHUB_WORKSPACE" --exclude-vcs \
             --transform="s|^\./|deadband-${RPM_VERSION}/|" \
             --transform="s|^\.$|deadband-${RPM_VERSION}|" \
             -czf "$RPM_TOP/SOURCES/deadband-${RPM_VERSION}.tar.gz" .
-          cp packaging/rpm/deadband.spec "$RPM_TOP/SPECS/"
+          cp "$GITHUB_WORKSPACE/packaging/rpm/deadband.spec" "$RPM_TOP/SPECS/"
 
       - name: Build RPM package
         env:
