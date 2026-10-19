@@ -39,8 +39,10 @@ jobs:
           RPM_TOP: ${{ steps.release.outputs.top }}
         run: |
           set -euo pipefail
-          git archive --format=tar --prefix="deadband-${RPM_VERSION}/" "$GITHUB_SHA" \
-            | gzip -n > "$RPM_TOP/SOURCES/deadband-${RPM_VERSION}.tar.gz"
+          tar --exclude-vcs \
+            --transform="s|^\./|deadband-${RPM_VERSION}/|" \
+            --transform="s|^\.$|deadband-${RPM_VERSION}|" \
+            -czf "$RPM_TOP/SOURCES/deadband-${RPM_VERSION}.tar.gz" .
           cp packaging/rpm/deadband.spec "$RPM_TOP/SPECS/"
 
       - name: Build RPM package
