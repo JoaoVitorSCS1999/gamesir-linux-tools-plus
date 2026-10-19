@@ -1,4 +1,5 @@
 %{!?app_version:%global app_version 0.6.0~dev}
+%{!?_udevrulesdir:%global _udevrulesdir %{_prefix}/lib/udev/rules.d}
 
 Name:           deadband
 Version:        %{app_version}
