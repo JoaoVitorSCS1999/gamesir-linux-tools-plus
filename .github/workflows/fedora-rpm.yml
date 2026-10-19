@@ -94,6 +94,7 @@ jobs:
           if [[ "$tag" == *-dev* ]]; then
             release_args+=(--prerelease)
           fi
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           set +e
           publish_output="$(gh release create "$tag" "${release_args[@]}" dist/*.rpm 2>&1)"
           publish_status=$?
