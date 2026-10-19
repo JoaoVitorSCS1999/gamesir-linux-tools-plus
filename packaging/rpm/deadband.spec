@@ -1,4 +1,4 @@
-%global app_version 0.6.0~dev
+%{!?app_version:%global app_version 0.6.0~dev}
 
 Name:           deadband
 Version:        %{app_version}
