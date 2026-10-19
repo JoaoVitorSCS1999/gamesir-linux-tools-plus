@@ -20,7 +20,8 @@ jobs:
       - name: Check out release source
         uses: actions/checkout@v4
 
-      - name: Build RPM
+      - name: Prepare release metadata
+        id: release
         shell: bash
         run: |
           set -euo pipefail
@@ -29,13 +30,35 @@ jobs:
           version="${tag_version/-/~}"
           top="$RUNNER_TEMP/rpmbuild"
           mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-          git archive --format=tar --prefix="deadband-${version}/" "$GITHUB_SHA" \
-            | gzip -n > "$top/SOURCES/deadband-${version}.tar.gz"
-          cp packaging/rpm/deadband.spec "$top/SPECS/"
-          rpmbuild -ba "$top/SPECS/deadband.spec" \
-            --define "_topdir $top" --define "app_version $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "top=$top" >> "$GITHUB_OUTPUT"
+
+      - name: Create source archive
+        env:
+          RPM_VERSION: ${{ steps.release.outputs.version }}
+          RPM_TOP: ${{ steps.release.outputs.top }}
+        run: |
+          set -euo pipefail
+          git archive --format=tar --prefix="deadband-${RPM_VERSION}/" "$GITHUB_SHA" \
+            | gzip -n > "$RPM_TOP/SOURCES/deadband-${RPM_VERSION}.tar.gz"
+          cp packaging/rpm/deadband.spec "$RPM_TOP/SPECS/"
+
+      - name: Build RPM package
+        env:
+          RPM_VERSION: ${{ steps.release.outputs.version }}
+          RPM_TOP: ${{ steps.release.outputs.top }}
+        run: |
+          set -euo pipefail
+          rpmbuild -ba "$RPM_TOP/SPECS/deadband.spec" \
+            --define "_topdir $RPM_TOP" --define "app_version $RPM_VERSION"
+
+      - name: Stage RPM artifact
+        env:
+          RPM_TOP: ${{ steps.release.outputs.top }}
+        run: |
+          set -euo pipefail
           mkdir -p dist
-          cp "$top/RPMS/noarch/"*.rpm dist/
+          cp "$RPM_TOP/RPMS/noarch/"*.rpm dist/
 
       - name: Publish RPM on GitHub release
         env:
