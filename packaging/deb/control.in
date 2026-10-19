@@ -1,0 +1,10 @@
+Package: deadband
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: Deadband contributors <noreply@github.com>
+Depends: python3, python3-pyside6.qtcore, python3-pyside6.qtgui, python3-pyside6.qtqml, python3-pyside6.qtquick, python3-hid, libusb-1.0-0, qml6-module-qtquick, qml6-module-qtquick-window, qml6-module-qtquick-layouts, qml6-module-qtquick-dialogs, qml6-module-qtquick-controls, qml6-module-qtquick-shapes
+Description: Linux configuration app for GameSir controllers and Logitech mice
+ Deadband configures supported GameSir controllers and Logitech gaming mice,
+ including lighting, sticks, triggers, buttons, macros, and DPI profiles.

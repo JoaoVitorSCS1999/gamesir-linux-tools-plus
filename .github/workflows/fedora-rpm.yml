@@ -1,31 +1,79 @@
-name: Fedora RPM
+name: Linux packages
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to package and attach artifacts to
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  release-metadata:
+    name: Resolve release versions
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      deb_version: ${{ steps.release.outputs.deb_version }}
+      arch_version: ${{ steps.release.outputs.arch_version }}
+    steps:
+      - name: Parse release tag
+        id: release
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          tag_version="${tag#v}"
+          if [[ "$tag_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-dev(\.([0-9]+))?)?$ ]]; then
+            version="${BASH_REMATCH[1]}"
+            if [[ "$tag_version" == *-dev* ]]; then
+              deb_version="${version}~dev${BASH_REMATCH[4]:-0}"
+              arch_version="${version}.dev${BASH_REMATCH[4]:-0}"
+            else
+              deb_version="$version"
+              arch_version="$version"
+            fi
+          else
+            echo "Unsupported release tag: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "deb_version=$deb_version" >> "$GITHUB_OUTPUT"
+          echo "arch_version=$arch_version" >> "$GITHUB_OUTPUT"
+
   build-rpm:
     name: Build Fedora 44 RPM (x86_64)
     runs-on: ubuntu-latest
     container: fedora:44
+    needs: release-metadata
     steps:
       - name: Install RPM build tools
-        run: dnf install -y git-core rpm-build tar gzip gh
-
+        run: dnf install -y git-core rpm-build tar gzip
       - name: Check out release source
         uses: actions/checkout@v4
-
-      - name: Prepare release metadata
+        with:
+          ref: ${{ github.sha }}
+          path: builder
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-metadata.outputs.tag }}
+          path: release-source
+      - name: Prepare RPM metadata
         id: release
-        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.tag }}
         run: |
           set -euo pipefail
-          tag_version="${GITHUB_REF_NAME#v}"
+          tag_version="${RELEASE_TAG#v}"
           if [[ "$tag_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-dev(\.([0-9]+))?)?$ ]]; then
             version="${BASH_REMATCH[1]}"
             if [[ "$tag_version" == *-dev* ]]; then
@@ -34,7 +82,7 @@ jobs:
               release=1
             fi
           else
-            echo "Unsupported release tag: $GITHUB_REF_NAME" >&2
+            echo "Unsupported release tag: $RELEASE_TAG" >&2
             exit 1
           fi
           top=/tmp/deadband-rpmbuild
@@ -42,68 +90,133 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "release=$release" >> "$GITHUB_OUTPUT"
           echo "top=$top" >> "$GITHUB_OUTPUT"
-
       - name: Create source archive
         env:
           RPM_VERSION: ${{ steps.release.outputs.version }}
           RPM_TOP: ${{ steps.release.outputs.top }}
-        working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          tar -C "$GITHUB_WORKSPACE" --exclude-vcs \
+          tar -C "$GITHUB_WORKSPACE/release-source" --exclude-vcs \
             --transform="s|^\./|deadband-${RPM_VERSION}/|" \
             --transform="s|^\.$|deadband-${RPM_VERSION}|" \
             -czf "$RPM_TOP/SOURCES/deadband-${RPM_VERSION}.tar.gz" .
-
       - name: Stage RPM spec
         env:
           RPM_TOP: ${{ steps.release.outputs.top }}
-        working-directory: ${{ github.workspace }}
-        run: |
-          set -euo pipefail
-          cp "$GITHUB_WORKSPACE/packaging/rpm/deadband.spec" "$RPM_TOP/SPECS/"
-
+        run: cp "$GITHUB_WORKSPACE/builder/packaging/rpm/deadband.spec" "$RPM_TOP/SPECS/"
       - name: Build RPM package
         env:
           RPM_VERSION: ${{ steps.release.outputs.version }}
           RPM_RELEASE: ${{ steps.release.outputs.release }}
           RPM_TOP: ${{ steps.release.outputs.top }}
         run: |
-          set -euo pipefail
           rpmbuild -ba "$RPM_TOP/SPECS/deadband.spec" \
             --define "_topdir $RPM_TOP" \
             --define "app_version $RPM_VERSION" \
             --define "app_release $RPM_RELEASE"
-
       - name: Stage RPM artifact
         env:
           RPM_TOP: ${{ steps.release.outputs.top }}
         run: |
-          set -euo pipefail
           mkdir -p dist
           cp "$RPM_TOP/RPMS/noarch/"*.rpm dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: dist/*.rpm
+          if-no-files-found: error
 
-      - name: Publish RPM on GitHub release
+  build-deb:
+    name: Build Debian package
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    needs: release-metadata
+    steps:
+      - name: Install packaging tools
+        run: apt-get update && apt-get install -y --no-install-recommends bash ca-certificates dpkg-dev git
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: builder
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-metadata.outputs.tag }}
+          path: release-source
+      - name: Build .deb
         env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
+          VERSION: ${{ needs.release-metadata.outputs.deb_version }}
+        run: builder/packaging/deb/build.sh "$VERSION" dist release-source
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+  build-arch:
+    name: Build Arch package
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    needs: release-metadata
+    steps:
+      - name: Install Arch packaging tools
+        run: pacman -Syu --noconfirm --needed git
+      - name: Check out release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: builder
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-metadata.outputs.tag }}
+          path: release-source
+      - name: Build .pkg.tar.zst
+        env:
+          DEADBAND_VERSION: ${{ needs.release-metadata.outputs.arch_version }}
         run: |
           set -euo pipefail
-          tag="$GITHUB_REF_NAME"
-          release_args=(--verify-tag --generate-notes --title "Deadband $tag")
-          if [[ "$tag" == *-dev* ]]; then
-            release_args+=(--prerelease)
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          cd builder/packaging/arch
+          install -d -o builder -g builder "$GITHUB_WORKSPACE/dist"
+          runuser -u builder -- env DEADBAND_VERSION="$DEADBAND_VERSION" DEADBAND_SOURCE_DIR="$GITHUB_WORKSPACE/release-source" makepkg --noconfirm --nodeps --skipinteg
+          cp ./*.pkg.tar.zst "$GITHUB_WORKSPACE/dist/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: dist/*.pkg.tar.zst
+          if-no-files-found: error
+
+  publish-release-assets:
+    name: Attach Linux packages to release
+    runs-on: ubuntu-latest
+    needs: [release-metadata, build-rpm, build-deb, build-arch]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+      - name: Publish packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/* --clobber
           else
-            release_args+=(--latest)
+            release_args=(--verify-tag --generate-notes --title "Deadband $RELEASE_TAG")
+            if [[ "$RELEASE_TAG" == *-dev* ]]; then
+              release_args+=(--prerelease)
+            else
+              release_args+=(--latest)
+            fi
+            gh release create "$RELEASE_TAG" "${release_args[@]}" dist/*
           fi
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          set +e
-          publish_output="$(gh release create "$tag" "${release_args[@]}" dist/*.rpm 2>&1)"
-          publish_status=$?
-          set -e
-          if (( publish_status != 0 )); then
-            echo "$publish_output" >> "$GITHUB_STEP_SUMMARY"
-            error_message="$(printf '%s' "$publish_output" | tr '\n' ' ' | cut -c1-1500)"
-            echo "::error title=GitHub release creation failed::$error_message"
-            exit "$publish_status"
+          if [[ "$RELEASE_TAG" != *-dev* ]]; then
+            gh release edit "$RELEASE_TAG" --latest
           fi

@@ -216,7 +216,27 @@ sudo dnf install ./deadband-*.fc44.noarch.rpm
 The RPM installs the app launcher, desktop entry, icons, udev rules, and
 dependencies from Fedora's repositories. After installing, unplug and reconnect
 the controller once so the udev permissions take effect. The release workflow
-builds and attaches an RPM whenever a GitHub release is published.
+builds and attaches packages whenever a GitHub release is published.
+
+### Debian 13 or compatible
+
+Download the `.deb` for your release from the [GitHub releases page](https://github.com/JoaoVitorSCS1999/gamesir-linux-tools-plus/releases) and install it with APT so dependencies are resolved:
+
+```sh
+sudo apt install ./deadband_*_all.deb
+```
+
+### Arch Linux (prebuilt package)
+
+Download the `.pkg.tar.zst` from the [GitHub releases page](https://github.com/JoaoVitorSCS1999/gamesir-linux-tools-plus/releases), then install it with pacman:
+
+```sh
+sudo pacman -U ./deadband-*.pkg.tar.zst
+```
+
+The package declares its dependencies and installs the launcher, desktop entry,
+icons, and udev rules. The AUR `deadband-git` instructions above remain available
+for tracking the latest development version.
 
 ### NixOS
 

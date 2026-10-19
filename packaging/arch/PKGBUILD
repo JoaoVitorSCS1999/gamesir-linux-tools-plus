@@ -1,0 +1,48 @@
+pkgname=deadband
+pkgver=${DEADBAND_VERSION:?set DEADBAND_VERSION to the release version}
+pkgrel=1
+pkgdesc='Linux configuration app for GameSir controllers and Logitech mice'
+arch=('any')
+url='https://github.com/JoaoVitorSCS1999/gamesir-linux-tools-plus'
+license=('MIT')
+depends=('python' 'pyside6' 'python-hidapi' 'libusb')
+conflicts=('deadband-git')
+provides=('deadband')
+replaces=('deadband-git')
+source=()
+sha256sums=()
+
+package() {
+  local repo="${DEADBAND_SOURCE_DIR:-$startdir/../..}"
+  local share="$pkgdir/usr/share/deadband"
+
+  install -d "$share"
+  install -Dm644 "$repo"/*.py "$share"/
+  rm -f "$share/smoke_test.py"
+  cp -r "$repo/vendors" "$repo/qml" "$share"/
+  install -d "$share/assets"
+  install -Dm644 "$repo"/assets/{icon.png,icon-48.png,icon-64.png,icon-128.png,glyph-pad.png,glyph-pad-dark.png} "$share/assets"/
+  install -Dm644 "$repo/70-gamesir.rules" "$share/70-gamesir.rules"
+  install -Dm644 "$repo/packaging/udev/70-deadband-g502x.rules" "$share/packaging/udev/70-deadband-g502x.rules"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/deadband" <<'EOF'
+#!/usr/bin/env bash
+exec python3 /usr/share/deadband/deadband.py "$@"
+EOF
+  install -Dm644 "$repo/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$repo/70-gamesir.rules" "$pkgdir/usr/lib/udev/rules.d/70-gamesir.rules"
+  install -Dm644 "$repo/packaging/udev/70-deadband-g502x.rules" "$pkgdir/usr/lib/udev/rules.d/70-deadband-g502x.rules"
+  install -Dm644 "$repo/packaging/deadband.desktop" "$pkgdir/usr/share/applications/deadband.desktop"
+  for size in 48 64 128; do
+    install -Dm644 "$repo/assets/icon-${size}.png" "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/deadband.png"
+  done
+  install -Dm644 "$repo/assets/icon.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/deadband.png"
+}
+
+post_install() {
+  udevadm control --reload-rules || true
+}
+
+post_upgrade() {
+  udevadm control --reload-rules || true
+}
