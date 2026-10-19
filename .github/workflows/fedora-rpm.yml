@@ -37,12 +37,20 @@ jobs:
         env:
           RPM_VERSION: ${{ steps.release.outputs.version }}
           RPM_TOP: ${{ steps.release.outputs.top }}
+        working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
           tar -C "$GITHUB_WORKSPACE" --exclude-vcs \
             --transform="s|^\./|deadband-${RPM_VERSION}/|" \
             --transform="s|^\.$|deadband-${RPM_VERSION}|" \
             -czf "$RPM_TOP/SOURCES/deadband-${RPM_VERSION}.tar.gz" .
+
+      - name: Stage RPM spec
+        env:
+          RPM_TOP: ${{ steps.release.outputs.top }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
           cp "$GITHUB_WORKSPACE/packaging/rpm/deadband.spec" "$RPM_TOP/SPECS/"
 
       - name: Build RPM package
