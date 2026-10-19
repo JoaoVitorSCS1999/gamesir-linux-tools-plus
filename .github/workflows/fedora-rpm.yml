@@ -26,11 +26,21 @@ jobs:
         run: |
           set -euo pipefail
           tag_version="${GITHUB_REF_NAME#v}"
-          [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev(\.[0-9]+)?)?$ ]]
-          version="${tag_version/-/~}"
+          if [[ "$tag_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(-dev(\.([0-9]+))?)?$ ]]; then
+            version="${BASH_REMATCH[1]}"
+            if [[ "$tag_version" == *-dev* ]]; then
+              release="0.${BASH_REMATCH[4]:-0}.dev"
+            else
+              release=1
+            fi
+          else
+            echo "Unsupported release tag: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
           top=/tmp/deadband-rpmbuild
           mkdir -p "$top"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
           echo "top=$top" >> "$GITHUB_OUTPUT"
 
       - name: Create source archive
@@ -56,11 +66,14 @@ jobs:
       - name: Build RPM package
         env:
           RPM_VERSION: ${{ steps.release.outputs.version }}
+          RPM_RELEASE: ${{ steps.release.outputs.release }}
           RPM_TOP: ${{ steps.release.outputs.top }}
         run: |
           set -euo pipefail
           rpmbuild -ba "$RPM_TOP/SPECS/deadband.spec" \
-            --define "_topdir $RPM_TOP" --define "app_version $RPM_VERSION"
+            --define "_topdir $RPM_TOP" \
+            --define "app_version $RPM_VERSION" \
+            --define "app_release $RPM_RELEASE"
 
       - name: Stage RPM artifact
         env:

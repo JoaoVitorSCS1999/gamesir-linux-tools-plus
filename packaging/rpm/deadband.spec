@@ -1,9 +1,10 @@
-%{!?app_version:%global app_version 0.6.0~dev}
+%{!?app_version:%global app_version 0.6.0}
+%{!?app_release:%global app_release 1}
 %{!?_udevrulesdir:%global _udevrulesdir %{_prefix}/lib/udev/rules.d}
 
 Name:           deadband
 Version:        %{app_version}
-Release:        1%{?dist}
+Release:        %{app_release}%{?dist}
 Summary:        Linux configuration app for game controllers and mice
 License:        MIT
 URL:            https://github.com/JoaoVitorSCS1999/gamesir-linux-tools-plus
@@ -73,5 +74,5 @@ udevadm control --reload-rules || :
 %{_licensedir}/%{name}/LICENSE
 
 %changelog
-* Mon Oct 19 2026 Deadband contributors - 0.6.0~dev-1
+* Mon Oct 19 2026 Deadband contributors - 0.6.0-0.0.dev
 - Initial Fedora RPM package
