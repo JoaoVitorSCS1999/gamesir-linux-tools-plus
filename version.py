@@ -5,7 +5,7 @@ broken graphical session), which means the diagnostics can't import deadband.py
 to find the version -- that would drag Qt in. Both import this instead.
 """
 
-__version__ = '0.8.4'
+__version__ = '0.8.5'
 
 
 def build_id():

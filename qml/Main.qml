@@ -226,11 +226,12 @@ Window {
         nameFilters: ["JSON files (*.json)"]
         onAccepted: {
             var result = bridge.importTheme(selectedFile)
-            if (result.indexOf("ERROR:") === 0)
+            if (result.indexOf("ERROR:") === 0) {
                 win.themeFileStatus = I18n.t("Could not import theme") + ": " + result.slice(6)
-                            win.themeFileError = true
-            else
+                win.themeFileError = true
+            } else {
                 win.applyImportedTheme(result)
+            }
         }
     }
 

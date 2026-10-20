@@ -7,6 +7,11 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+## [0.8.5] — 2026-10-19
+
+### Fixed
+- Fixed a QML syntax error that prevented the app from starting after v0.8.4.
+
 ## [0.8.4] — 2026-10-19
 
 ### Added
