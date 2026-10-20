@@ -146,7 +146,7 @@ jobs:
       - name: Build .deb
         env:
           VERSION: ${{ needs.release-metadata.outputs.deb_version }}
-        run: builder/packaging/deb/build.sh "$VERSION" dist release-source
+        run: bash builder/packaging/deb/build.sh "$VERSION" dist release-source
       - uses: actions/upload-artifact@v4
         with:
           name: deb
