@@ -91,6 +91,10 @@ Item {
     readonly property var lay: bridge.diagram === "tarantula" ? tarantulaLayout : cycloneLayout
     readonly property bool isTar: lay.key === "tarantula"
     function at(n) { return root.lay.pos[n] !== undefined ? root.lay.pos[n] : [0, 0] }
+    property bool lightZoneSelectionEnabled: false
+    property var selectedLightZones: []
+    signal lightZoneTapped(int zone, bool additive)
+    function zoneSelected(i) { return selectedLightZones.indexOf(i) >= 0 }
 
     readonly property real aspect: lay.aspect
     implicitWidth: 560
@@ -239,6 +243,66 @@ Item {
             anchors.centerIn: parent; width: parent.width * 0.46; height: width
             radius: width / 2; color: "#15171D"
             border.color: "#3A3E48"; border.width: 1
+        }
+    }
+
+    // Directly selectable light hotspots on the drawing. The transparent hit
+    // regions sit over the addressable LEDs and show a restrained tint when the
+    // corresponding zone is in the current multi-selection.
+    Repeater {
+        model: root.lightZoneSelectionEnabled ? Math.min(2, bridge.lightNames.length) : 0
+        delegate: Item {
+            required property int index
+            x: index === 0 ? root.width * 0.07 : root.width * 0.79
+            y: root.height * 0.30
+            width: root.width * 0.14
+            height: root.height * 0.56
+            Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: root.zoneSelected(index)
+                       ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14)
+                       : (hotspot.containsMouse ? "#202A3A55" : "transparent")
+                border.color: root.zoneSelected(index) ? Theme.accent : "transparent"
+                border.width: 2
+            }
+            MouseArea {
+                id: hotspot
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.lightZoneTapped(index, (mouse.modifiers & Qt.ControlModifier) !== 0)
+            }
+        }
+    }
+    Repeater {
+        model: root.lightZoneSelectionEnabled && bridge.lightNames.length > 2 ? 2 : 0
+        delegate: Item {
+            required property int index
+            property int zoneIndex: index + 2
+            x: root.width * (index === 0 ? 0.445 : 0.44)
+            y: root.height * (index === 0 ? 0.36 : 0.105)
+            width: root.width * (index === 0 ? 0.11 : 0.12)
+            height: root.height * (index === 0 ? 0.09 : 0.12)
+            Rectangle {
+                anchors.fill: parent
+                radius: height / 2
+                color: root.zoneSelected(parent.zoneIndex)
+                       ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.18)
+                       : (hotspot.containsMouse ? "#202A3A55" : "transparent")
+                border.color: root.zoneSelected(parent.zoneIndex) ? Theme.accent : "transparent"
+                border.width: 2
+            }
+            MouseArea {
+                id: hotspot
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.lightZoneTapped(parent.zoneIndex,
+                                                (mouse.modifiers & Qt.ControlModifier) !== 0)
+            }
         }
     }
 

@@ -50,10 +50,13 @@ to edit without changing the profile currently active on the controller.
   viewing). Your exact keyframes are remembered per slot, so switching profiles and
   back restores them precisely.
 
-Changing a colour in the picker applies it to the controller automatically; on the
-Cyclone/Kaleid this also applies edits to the selected keyframe. The G7 Pro 8K's
-home-ring colours behave the same way. Presets, brightness/speed, and power settings
-remain staged in the pending bar until you **Save**. The preset that's on the
+Click a light on the controller drawing or its label to select it. **Ctrl-click**
+adds or removes lights from the selection; **Select all** selects every light. A
+colour change then applies to every selected light automatically, including the
+selected keyframe on Cyclone/Kaleid and the selected quadrants on the G7 Pro 8K.
+Colour writes are sent as soon as the picker changes, with only the USB protocol's
+packet spacing. Presets, brightness/speed, and power settings remain staged in the
+pending bar until you **Save**. The preset that's on the
 controller is highlighted. Choosing a **lighting profile** (1–4), Play / Pause, and
 the confirmed **Restore default lighting** act straight away. Lighting is shared
 across the hardware profiles, so switching hardware profile keeps staged lighting

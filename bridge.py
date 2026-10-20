@@ -187,13 +187,14 @@ class GamesirBridge(QObject):
         self._loaded_frames = []        # list of frames, each = 4 hex strings
 
         # Lighting edits are staged against the bytes last read from the pad.
-        # Color edits are selectively auto-applied through the verified write path;
+        # Color edits use the paced live write path;
         # other lighting settings remain pending for Save. _light_loaded holds
         # read-back bytes (bank 0x20 addr -> list). _light_keys tracks pending
         # lighting entries so a discard, reload, or device switch restores the
         # page to what the pad holds -- see _on_pending_changed.
         self._light_loaded = {}
         self._light_keys = set()
+        self._lighting_inflight = {}
         self._led_rec_slot = None       # slot whose record _light_loaded holds
 
         # Per-profile config read-back + staged edits (Sticks/Triggers/Vibration).
@@ -383,6 +384,7 @@ class GamesirBridge(QObject):
         # the page to the previous unit's bytes
         self._light_loaded = {}
         self._light_keys = set()
+        self._lighting_inflight = {}
         self._led_rec_slot = None
         # config editor
         self._se_rates = {}
@@ -553,7 +555,9 @@ class GamesirBridge(QObject):
             return False
         data = list(data)
         key = ('light', addr)
-        if base[:len(data)] == data:
+        inflight = self._lighting_inflight.get(addr)
+        if (base[:len(data)] == data
+                and (inflight is None or inflight[:len(data)] == data)):
             self._pending.pop(key, None)
         else:
             self._pending[key] = {'addr': addr, 'bank': led.LED_BANK, 'data': data,
@@ -1496,10 +1500,21 @@ class GamesirBridge(QObject):
 
     @Slot(int, str)
     def setLight(self, i, color):
-        """Set one zone's display color (the Lights page calls this as the user
-        edits). Does NOT write to the controller; pushing is a separate action."""
+        """Set one zone's displayed color, for loading an existing keyframe."""
         if 0 <= i < len(self._light_colors):
             self._light_colors[i] = color
+            self.lightsChanged.emit()
+
+    @Slot('QVariantList', str)
+    def setLights(self, indices, color):
+        """Update the preview colors for a selected group of addressable lights."""
+        changed = False
+        for value in indices:
+            i = int(value)
+            if 0 <= i < len(self._light_colors) and self._light_colors[i] != color:
+                self._light_colors[i] = color
+                changed = True
+        if changed:
             self.lightsChanged.emit()
 
     @Property('QVariantList', constant=True)
@@ -2759,11 +2774,118 @@ class GamesirBridge(QObject):
 
     @Slot()
     def applyLighting(self):
-        """Immediately write staged color edits without applying other pages."""
+        """Send the latest staged color to the controller on the live path."""
         if self._backup_busy:
             self._lighting_apply_requested = True
             return
-        self._apply_transactional(lighting_only=True)
+        self._apply_lighting_live()
+
+    def _apply_lighting_live(self):
+        """Write only color records/quadrants, without Save's backup/readback wait.
+
+        The transport still serializes and paces every packet. The original bytes
+        already came from the lighting read, so they remain available for rollback
+        if a multi-packet write is interrupted. All other settings continue through
+        the durable, read-back-verified Save transaction.
+        """
+        if self._backup_busy or not self._pending:
+            return
+        if (self._prof.write_style not in ('cyclone', 'g7se', 'gip')
+                or profiles.active() is not self._prof or not profiles.is_recognized()
+                or not state.get('connected') or self._driving != state.get('driving')
+                or state.get('driving') != state.get('selected')):
+            self._set_apply_status('Apply refused: controller selection changed; reload its settings')
+            return
+        if self._is_8k_lighting():
+            auto_addresses = set(led8k.HOME_Q)
+        elif _keyframe_lighting() and self._led_rec_slot is not None:
+            auto_addresses = {led.record_addr(self._led_rec_slot)}
+        else:
+            auto_addresses = set()
+        snapshot = {
+            key: copy.deepcopy(record) for key, record in self._pending.items()
+            if record.get('kind') == 'lighting' and record['addr'] in auto_addresses
+        }
+        if not snapshot:
+            return
+
+        originals = {}
+        for key, record in snapshot.items():
+            base = self._light_loaded.get(record['addr'])
+            if base is None or len(base) < len(record['data']):
+                self._set_apply_status('Lighting is still being read from the controller; try again')
+                return
+            originals[key] = list(base[:len(record['data'])])
+
+        prof, gen = self._prof, control.generation()
+        self._lighting_inflight = {
+            record['addr']: list(record['data']) for record in snapshot.values()
+        }
+        self._backup_busy = True
+        self.backupBusyChanged.emit()
+        self._set_apply_status('Applying colour…')
+
+        def run():
+            attempted = []
+            try:
+                for key, record in snapshot.items():
+                    if (gen != control.generation() or self._prof is not prof
+                            or profiles.active() is not prof or not state.get('connected')
+                            or self._driving != state.get('driving')
+                            or state.get('driving') != state.get('selected')):
+                        raise OSError('controller session changed')
+                    attempted.append(key)
+                    if not control.write_reg(record['bank'], record['addr'], record['data'],
+                                             write_style=prof.write_style, gen=gen):
+                        raise OSError(f'color write refused at 0x{record["addr"]:04x}')
+
+                # The transport accepted every paced packet. Promote those bytes
+                # to the live base so the UI no longer reports them as unsaved.
+                for key, record in snapshot.items():
+                    addr = record['addr']
+                    base = self._light_loaded.get(addr)
+                    if base is not None:
+                        base[:len(record['data'])] = record['data']
+                    if self._pending.get(key) == record:
+                        del self._pending[key]
+                self._light_keys = {k for k in self._pending
+                                    if isinstance(k, tuple) and k[:1] == ('light',)}
+                self._set_apply_status('Color sent to controller')
+                self.pendingChanged.emit()
+            except Exception as exc:
+                rollback_ok = True
+                for key in reversed(attempted):
+                    record = snapshot[key]
+                    try:
+                        rollback_ok = (control.write_reg(
+                            record['bank'], record['addr'], originals[key],
+                            write_style=prof.write_style, gen=gen) and rollback_ok)
+                    except Exception:
+                        rollback_ok = False
+                if rollback_ok and attempted:
+                    for key in attempted:
+                        current = self._pending.get(key)
+                        if current is not None and current.get('data') == originals[key]:
+                            del self._pending[key]
+                    self._light_keys = {k for k in self._pending
+                                        if isinstance(k, tuple) and k[:1] == ('light',)}
+                    self.pendingChanged.emit()
+                suffix = '; previous color restored' if rollback_ok and attempted else ''
+                if attempted and not rollback_ok:
+                    suffix = '; previous color could not be confirmed'
+                self._set_apply_status(f'Color apply failed: {exc}{suffix}')
+            finally:
+                for record in snapshot.values():
+                    addr = record['addr']
+                    if self._lighting_inflight.get(addr) == list(record['data']):
+                        self._lighting_inflight.pop(addr, None)
+                self._backup_busy = False
+                self.backupBusyChanged.emit()
+                if self._lighting_apply_requested:
+                    self._lighting_apply_requested = False
+                    self._lightingApplyRequested.emit()
+
+        threading.Thread(target=run, daemon=True).start()
 
     def _apply_transactional(self, lighting_only=False):
         if self._backup_busy or not self._pending:

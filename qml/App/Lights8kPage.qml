@@ -57,8 +57,8 @@ Item {
         primary = (sel.indexOf(i) >= 0) ? i : sel[0]
         seedPicker()
     }
-    // apply the picked colour to ALL selected quadrants: update the ring preview
-    // immediately, and debounce the (paced) device write so a drag doesn't flood.
+    // Apply the picked colour to every selected quadrant. A short coalescing
+    // interval keeps slider drags responsive without queueing stale USB writes.
     function applyQuad(c) {
         var hue = c.hsvHue >= 0 ? Math.min(hueMaxDeg, Math.round(c.hsvHue * 360))
                                 : quads[primary][0]
@@ -70,7 +70,7 @@ Item {
         writeTimer.restart()
     }
     Timer {
-        id: writeTimer; interval: 40
+        id: writeTimer; interval: 8
         onTriggered: bridge.setLight8kQuads(page.sel, page.pendingHue, page.pendingSat)
     }
 

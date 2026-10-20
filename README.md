@@ -24,7 +24,8 @@ The configurable models offer:
   Cyclone 2 and two (left/right) on the Kaleid. The Cyclone 2 adds
   audio-reactive / pick-up-to-wake / sleep timeout. On the **G7 Pro 8K**: ring
   effect and brightness, home-ring quadrant colours, sleep timer and dock light.
-  Changing a colour applies it to the controller automatically. Presets,
+  Select one light, Ctrl-click to add/remove lights, or select all; changing a
+  colour applies it to every selected light automatically. Presets,
   brightness/speed, and power settings remain staged for Save; picking a lighting
   profile and Restore default lighting act straight away.
 - **Config editor** — deadzones and anti-deadzones (drag, or type exact values),
@@ -71,13 +72,13 @@ theme; click it (or the caption link) to step through them one at a time:
   <em><a href="docs/screenshots/README.md">Browse the screenshot tour ▶</a></em>
 </p>
 
-**Version:** `0.8.0-dev` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
+**Version:** `0.8.0` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
 G7 Pro 8K PC + Tarantula Pro 8K + Kaleid controllers, G502 X mouse), the full Qt/QML app (lighting + keyframe editor,
 config editor, remaps, macros, backup/restore), built-in diagnostics,
 one-command install, an [AUR package](https://aur.archlinux.org/packages/deadband-git),
 and a [community NixOS flake](https://codeberg.org/Epaphroditus/gamesir-linux-tools-nix).
 Tracks `main` (the AUR `-git` package builds from the latest commit); last tagged
-snapshot is `v0.7.2`.
+snapshot is `v0.8.0`.
 **Going deeper?** The **[Manual](MANUAL.md)** is the user guide — how to use each
 feature, troubleshooting & recovery, and an FAQ. **[RESEARCH.md](RESEARCH.md)** is the
 developer side — protocol, architecture, the diagnostic tools, and per-controller

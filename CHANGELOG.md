@@ -5,7 +5,22 @@ and Logitech mice — newest first. This is the
 curated, user-facing summary; the complete history is in git. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com).
 
-## [Unreleased]
+## [0.8.0] — 2026-10-19
+
+### Added
+- Select multiple lighting zones on the controller drawing or by name; one color
+  change applies to every selected zone, with Ctrl-click to add or remove zones
+  and a Select all control.
+
+### Changed
+- Lighting color changes are sent through the paced live USB path without waiting
+  for the Save transaction's backup and readback cycle. Other lighting settings
+  remain staged for Save.
+- Reduced the extra coalescing delay for G7 Pro 8K home-ring color changes.
+
+### Hardware validation
+- The multi-zone UI and live color path have not yet been verified on physical
+  controller hardware.
 
 ## [0.7.2] — 2026-10-19
 

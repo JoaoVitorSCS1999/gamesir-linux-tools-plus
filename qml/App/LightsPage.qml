@@ -10,14 +10,14 @@ import QtQuick.Layouts
 Item {
     id: page
 
-    property int sel: 0                       // selected zone, 0..nZones-1
+    property var sel: [0]                     // selected zones, all get the picker color
     property var frames: [bridge.lightColors.slice()]
     // Per-model: the Cyclone exposes four lights, the Kaleid two.
     readonly property int nZones: bridge.lightNames.length
     // A different light count arrives (controllerChanged) BEFORE the new
     // controller's lighting is read: drop a pending stage built for the old
     // count and re-seed now, so nothing indexes past the new zones.
-    onNZonesChanged: { stageTimer.stop(); syncFromBridge() }
+    onNZonesChanged: syncFromBridge()
     property int curFrame: 0
     property bool playing: true
     property string sleepSel: "10 min"
@@ -33,7 +33,6 @@ Item {
     // Pull the page in line with the controller's real lighting state. Runs at
     // startup and whenever the bridge reads a new active slot back.
     function syncFromBridge() {
-        stageTimer.stop()
         frames = bridge.loadedFrames.length > 0 ? bridge.loadedFrames
                                                 : [bridge.lightColors.slice()]
         curFrame = 0
@@ -42,7 +41,8 @@ Item {
         sleepSel = bridge.sleepLabel
         briSlider.value = bridge.brightness
         spdSlider.value = bridge.speed
-        selectZone(sel)
+        if (!sel.length || sel.some(function (z) { return z >= page.nZones })) sel = [0]
+        selectZone(sel[sel.length - 1], false)
     }
 
     Connections {
@@ -59,18 +59,34 @@ Item {
     }
     function randomVivid() { return colorToHex(Qt.hsva(Math.random(), 1, 1, 1)) }
 
-    function selectZone(z) {
-        sel = Math.max(0, Math.min(page.nZones - 1, z))
-        picker.setColor(bridge.lightColors[sel])
+    function isZoneSelected(z) { return sel.indexOf(z) >= 0 }
+    function selectAllZones() {
+        var all = []
+        for (var i = 0; i < page.nZones; i++) all.push(i)
+        sel = all
+        if (all.length) picker.setColor(bridge.lightColors[all[all.length - 1]])
+    }
+    function selectZone(z, additive) {
+        z = Math.max(0, Math.min(page.nZones - 1, z))
+        var next = sel.slice()
+        if (additive) {
+            var at = next.indexOf(z)
+            if (at >= 0) {
+                if (next.length > 1) next.splice(at, 1)
+            } else next.push(z)
+        } else next = [z]
+        sel = next
+        var primary = next.indexOf(z) >= 0 ? z : next[next.length - 1]
+        picker.setColor(bridge.lightColors[primary])
     }
     function onZoneEdited(c) {
         var hex = colorToHex(c)
-        bridge.setLight(sel, hex)
-        frames[curFrame][sel] = hex
-        stageTimer.restart()
+        var frame = frames[curFrame].slice()
+        for (var i = 0; i < sel.length; i++) frame[sel[i]] = hex
+        var nextFrames = frames.slice(); nextFrames[curFrame] = frame; frames = nextFrames
+        bridge.setLights(sel, hex)
+        stageAnimation()
     }
-    // A colour drag fires many edits; debounce the verified write until it settles.
-    Timer { id: stageTimer; interval: 60; onTriggered: page.stageAnimation() }
     function loadFrame(i) {
         for (var z = 0; z < page.nZones; z++) bridge.setLight(z, frames[i][z])
         picker.setColor(bridge.lightColors[sel])
@@ -301,6 +317,9 @@ Item {
                     spacing: 14
                 ControllerView {
                     anchors.horizontalCenter: parent.horizontalCenter
+                    lightZoneSelectionEnabled: true
+                    selectedLightZones: page.sel
+                    onLightZoneTapped: function (zone, additive) { page.selectZone(zone, additive) }
                     // Cap the render when the viewport is short so the reparented
                     // Power card and side columns aren't pushed off the bottom.
                     width: Math.min(implicitWidth, centerArea.width - 24,
@@ -320,8 +339,9 @@ Item {
                             required property int index
                             width: 96; height: 40; radius: 8
                             color: "#1A1C22"
-                            border.color: page.sel === index ? Theme.accent : Theme.cardBorder
-                            border.width: page.sel === index ? 2 : 1
+                            color: page.isZoneSelected(index) ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14) : "#1A1C22"
+                            border.color: page.isZoneSelected(index) ? Theme.accent : Theme.cardBorder
+                            border.width: page.isZoneSelected(index) ? 2 : 1
                             Row {
                                 anchors.centerIn: parent; spacing: 6
                                 Rectangle {
@@ -336,9 +356,24 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
                             }
-                            TapHandler { onTapped: page.selectZone(index) }
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: page.selectZone(index, (mouse.modifiers & Qt.ControlModifier) !== 0)
+                            }
                         }
                     }
+                    TextButton {
+                        label: "Select all"
+                        highlight: page.sel.length === page.nZones
+                        onClicked: page.selectAllZones()
+                    }
+                }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "Click a zone to select it; Ctrl-click to add or remove zones"
+                    color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
             }
             }
@@ -352,7 +387,7 @@ Item {
             spacing: 16
 
             Card {
-                title: "Zone — " + (bridge.lightNames[page.sel] || ""); Layout.fillWidth: true
+                title: "Color — " + page.sel.map(function (i) { return bridge.lightNames[i] || "" }).join(", "); Layout.fillWidth: true
                 ColorPicker {
                     id: picker; width: parent.width
                     onEdited: page.onZoneEdited(c)
