@@ -197,13 +197,13 @@ jobs:
           ref: ${{ needs.release-metadata.outputs.tag }}
           path: release-source
       - name: Install AppImage build tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends file wget desktop-file-utils
-      - name: Download linuxdeploy
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends file wget desktop-file-utils squashfs-tools
+      - name: Download AppImage tools
         run: |
-          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -O linuxdeploy.AppImage
-          chmod +x linuxdeploy.AppImage
           wget -q https://raw.githubusercontent.com/linuxdeploy/linuxdeploy-plugin-conda/master/linuxdeploy-plugin-conda.sh -O linuxdeploy-plugin-conda
           chmod +x linuxdeploy-plugin-conda
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool.AppImage
+          chmod +x appimagetool.AppImage
       - name: Build AppImage
         env:
           CONDA_PYTHON_VERSION: '3.12'
@@ -252,13 +252,10 @@ jobs:
           install -m 0644 release-source/assets/icon.png "$appdir/deadband.png"
           install -m 0644 release-source/LICENSE "$appdir/LICENSE"
 
-          export APPIMAGE_EXTRACT_AND_RUN=1
-          ./linuxdeploy.AppImage --appdir "$appdir" \
-            --desktop-file "$appdir/deadband.desktop" \
-            --icon-file "$appdir/deadband.png" \
-            --output appimage
           mkdir -p dist
-          mv ./*.AppImage "dist/Deadband-${{ needs.release-metadata.outputs.version }}-x86_64.AppImage"
+          export APPIMAGE_EXTRACT_AND_RUN=1 ARCH=x86_64
+          ./appimagetool.AppImage "$appdir" \
+            "dist/Deadband-${{ needs.release-metadata.outputs.version }}-x86_64.AppImage"
       - uses: actions/upload-artifact@v4
         with:
           name: appimage
