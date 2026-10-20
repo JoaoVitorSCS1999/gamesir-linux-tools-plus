@@ -7,6 +7,11 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-10-19
+
+### Added
+- x86_64 AppImage build alongside the Fedora RPM, Debian package, and Arch package.
+
 ## [0.7.0] — 2026-10-19
 
 ### Added

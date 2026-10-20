@@ -71,13 +71,13 @@ theme; click it (or the caption link) to step through them one at a time:
   <em><a href="docs/screenshots/README.md">Browse the screenshot tour ▶</a></em>
 </p>
 
-**Version:** `0.8.0-dev` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
+**Version:** `0.7.1` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
 G7 Pro 8K PC + Tarantula Pro 8K + Kaleid controllers, G502 X mouse), the full Qt/QML app (lighting + keyframe editor,
 config editor, remaps, macros, backup/restore), built-in diagnostics,
 one-command install, an [AUR package](https://aur.archlinux.org/packages/deadband-git),
 and a [community NixOS flake](https://codeberg.org/Epaphroditus/gamesir-linux-tools-nix).
 Tracks `main` (the AUR `-git` package builds from the latest commit); last tagged
-snapshot is `v0.7.0`.
+snapshot is `v0.7.1`.
 **Going deeper?** The **[Manual](MANUAL.md)** is the user guide — how to use each
 feature, troubleshooting & recovery, and an FAQ. **[RESEARCH.md](RESEARCH.md)** is the
 developer side — protocol, architecture, the diagnostic tools, and per-controller
@@ -219,6 +219,19 @@ dependencies from Fedora's repositories. After installing, unplug and reconnect
 the controller once so the udev permissions take effect. The release workflow
 builds and attaches packages whenever a GitHub release is published.
 
+### AppImage (x86_64)
+
+Download `Deadband-*-x86_64.AppImage` from the [GitHub releases page](https://github.com/JoaoVitorSCS1999/gamesir-linux-tools-plus/releases), make it executable, and run it:
+
+```sh
+chmod +x Deadband-*-x86_64.AppImage
+./Deadband-*-x86_64.AppImage
+```
+
+The AppImage bundles Python, Qt, and the app's runtime dependencies. Controller
+access still requires the one-time udev permission rule described under
+[Grant device access](#grant-device-access-recommended-once).
+
 ### Debian 13 or compatible
 
 Download the `.deb` for your release from the [GitHub releases page](https://github.com/JoaoVitorSCS1999/gamesir-linux-tools-plus/releases) and install it with APT so dependencies are resolved:
@@ -300,7 +313,7 @@ together — note this also resets the active profile's remaps and the Shift lay
 The app's header warns when it detects an unsupported mode, and the diagnostics
 report says which mode a controller is in.
 
-**Grant device access (recommended, once):**
+### Grant device access (recommended, once)
 
 1. From the repo directory, install the udev rule — it's scoped to GameSir's
    USB vendor id, nothing else:
