@@ -923,10 +923,11 @@ def _probe_gamesir():
     except Exception as e:
         return ['### Probe: GameSir', f'- HID library unavailable: {e}']
     out = ['### Probe: unrecognised GameSir controllers']
-    asked = 0
+    asked, seen = 0, set()
     for d in hid.enumerate():
-        if d.get('vendor_id') != 0x3537:
-            continue
+        if d.get('vendor_id') != 0x3537 or d.get('path') in seen:
+            continue        # hidapi lists a node once per collection: ask it once
+        seen.add(d.get('path'))
         pid, product = d.get('product_id'), d.get('product_string') or ''
         if profiles.detect_one(pid, product) is not None:
             continue                             # supported: nothing to learn
