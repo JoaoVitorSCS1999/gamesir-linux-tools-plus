@@ -263,16 +263,24 @@ jobs:
           if-no-files-found: error
 
   publish-release-assets:
-    name: Attach Linux packages to release
+    name: Publish core Linux packages
     runs-on: ubuntu-latest
-    needs: [release-metadata, build-rpm, build-deb, build-arch, build-appimage]
+    needs: [release-metadata, build-rpm, build-deb, build-arch]
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
+          name: rpm
           path: dist
-          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch
+          path: dist
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install -y gh
       - name: Publish packages
@@ -296,3 +304,23 @@ jobs:
           if [[ "$RELEASE_TAG" != *-dev* ]]; then
             gh release edit "$RELEASE_TAG" --latest
           fi
+
+  publish-appimage:
+    name: Attach AppImage when ready
+    runs-on: ubuntu-latest
+    needs: [release-metadata, build-appimage, publish-release-assets]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: appimage
+          path: dist
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh
+      - name: Attach AppImage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: JoaoVitorSCS1999/gamesir-linux-tools-plus
+          RELEASE_TAG: ${{ needs.release-metadata.outputs.tag }}
+        run: gh release upload "$RELEASE_TAG" dist/*.AppImage --clobber
