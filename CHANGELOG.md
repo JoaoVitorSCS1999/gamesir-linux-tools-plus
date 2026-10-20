@@ -7,6 +7,18 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-19
+
+### Added
+- Lighting color changes apply automatically to the controller, including
+  keyframe edits and the G7 Pro 8K home-ring quadrants.
+- Prebuilt Linux release packages for Fedora 44 (`.rpm`), Debian/Ubuntu (`.deb`),
+  and Arch Linux (`.pkg.tar.zst`).
+
+### Changed
+- Lighting presets, brightness/speed, and power settings remain staged for Save;
+  color edits are written immediately with verification.
+
 ## [0.6.0] — 2026-10-19
 
 ### Added
