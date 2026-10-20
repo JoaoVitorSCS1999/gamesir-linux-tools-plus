@@ -29,6 +29,12 @@ package() {
 #!/usr/bin/env bash
 exec python3 /usr/share/deadband/deadband.py "$@"
 EOF
+  install -Dm644 "$repo/completions/bash/deadband" \
+    "$pkgdir/usr/share/bash-completion/completions/deadband"
+  install -Dm644 "$repo/completions/zsh/_deadband" \
+    "$pkgdir/usr/share/zsh/site-functions/_deadband"
+  install -Dm644 "$repo/completions/fish/deadband.fish" \
+    "$pkgdir/usr/share/fish/vendor_completions.d/deadband.fish"
   install -Dm644 "$repo/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 "$repo/70-gamesir.rules" "$pkgdir/usr/lib/udev/rules.d/70-gamesir.rules"
   install -Dm644 "$repo/packaging/udev/70-deadband-g502x.rules" "$pkgdir/usr/lib/udev/rules.d/70-deadband-g502x.rules"

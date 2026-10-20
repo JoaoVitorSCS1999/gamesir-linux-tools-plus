@@ -7,6 +7,14 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+## [0.8.6] — 2026-10-19
+
+### Added
+- Documented terminal options and added Bash, Zsh, and Fish completion files.
+
+### Changed
+- Explain the system authorization prompt before installing distro packages in-app.
+
 ## [0.8.5] — 2026-10-19
 
 ### Fixed

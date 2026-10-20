@@ -25,6 +25,18 @@ On first launch, the app selects the matching language from the desktop locale a
 remembers it; if the system is set to English (or an unsupported language), it
 starts in English. In **Settings → Appearance**, choose a theme preset such as
 Gruvbox, or use **Import…** and **Export…** to share custom themes as JSON files.
+
+### Terminal options
+
+`deadband -h` or `deadband --help` lists the available terminal options. Run
+`deadband --doctor` to diagnose device access without opening the GUI, or
+`deadband --version` to print the installed version. Tab completion is provided
+for Bash, Zsh, and Fish. Distro packages install the completion files in the
+standard system directories; the source installer places them in your user
+directories. For Zsh source installs, add
+`fpath=("$HOME/.local/share/zsh/site-functions" $fpath)` to `~/.zshrc` and run
+`autoload -Uz compinit && compinit` if Zsh does not already load that directory.
+
 Everything below assumes the controller is connected and in **Xbox / XInput
 mode**. A G7 Pro at `3537:100a` is transitioned automatically to wired `3537:109b`
 or dongle `3537:109c`. If it shows `3537:1022`, hold **SHARE + MENU (☰)** together (note this

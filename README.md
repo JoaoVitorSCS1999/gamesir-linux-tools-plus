@@ -72,13 +72,13 @@ theme; click it (or the caption link) to step through them one at a time:
   <em><a href="docs/screenshots/README.md">Browse the screenshot tour ▶</a></em>
 </p>
 
-**Version:** `0.8.5` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
+**Version:** `0.8.6` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
 G7 Pro 8K PC + Tarantula Pro 8K + Kaleid controllers, G502 X mouse), the full Qt/QML app (lighting + keyframe editor,
 config editor, remaps, macros, backup/restore), built-in diagnostics,
 one-command install, an [AUR package](https://aur.archlinux.org/packages/deadband-git),
 and a [community NixOS flake](https://codeberg.org/Epaphroditus/gamesir-linux-tools-nix).
 Tracks `main` (the AUR `-git` package builds from the latest commit); last tagged
-snapshot is `v0.8.5`.
+snapshot is `v0.8.6`.
 **Going deeper?** The **[Manual](MANUAL.md)** is the user guide — how to use each
 feature, troubleshooting & recovery, and an FAQ. **[RESEARCH.md](RESEARCH.md)** is the
 developer side — protocol, architecture, the diagnostic tools, and per-controller
@@ -370,6 +370,10 @@ rule, a Python `hidapi` built with the libusb backend, and so on, with fix
 commands for your distro (NixOS included). Use **Copy report** to paste the
 result into a GitHub issue. The app shows the same guidance in a banner
 whenever it finds a device it can't open.
+
+Run `deadband -h` for the terminal options. Bash, Zsh, and Fish completions are
+included with the distro packages; the source installer also installs them for
+the current user.
 
 If an issue asks for it, `deadband --doctor --probe` adds a few **read-only**
 questions to the devices themselves (close Deadband first): a G502 X's

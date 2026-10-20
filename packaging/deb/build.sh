@@ -34,6 +34,12 @@ sys.path.insert(0, '/usr/share/deadband')
 runpy.run_path('/usr/share/deadband/deadband.py', run_name='__main__')
 EOF
 chmod 0755 "$pkg/usr/bin/deadband"
+install -Dm 0644 "$repo/completions/bash/deadband" \
+    "$pkg/usr/share/bash-completion/completions/deadband"
+install -Dm 0644 "$repo/completions/zsh/_deadband" \
+    "$pkg/usr/share/zsh/site-functions/_deadband"
+install -Dm 0644 "$repo/completions/fish/deadband.fish" \
+    "$pkg/usr/share/fish/vendor_completions.d/deadband.fish"
 
 install -d "$pkg/DEBIAN"
 sed "s/@VERSION@/$version/" "$repo/packaging/deb/control.in" > "$pkg/DEBIAN/control"

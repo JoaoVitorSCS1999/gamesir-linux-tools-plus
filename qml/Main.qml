@@ -256,7 +256,7 @@ Window {
         x: (win.width - width) / 2
         y: (win.height - height) / 2
         width: 440
-        height: 220
+        height: 250
         contentItem: Column {
             spacing: 12
             Text {
@@ -267,6 +267,15 @@ Window {
                 wrapMode: Text.WordWrap
                 color: Theme.text
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
+            }
+            Text {
+                visible: updateManager.canInstall
+                         && updateManager.installationKind !== "appimage"
+                width: parent.width
+                text: I18n.t("The operating system will request administrator authorization to install this package.")
+                wrapMode: Text.WordWrap
+                color: Theme.textDim
+                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
             }
             Text {
                 width: parent.width

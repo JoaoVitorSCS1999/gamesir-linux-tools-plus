@@ -60,6 +60,12 @@ sys.path.insert(0, '/usr/share/deadband')
 runpy.run_path('/usr/share/deadband/deadband.py', run_name='__main__')
 EOF
 chmod 0755 %{buildroot}%{_bindir}/deadband
+install -D -m 0644 completions/bash/deadband \
+    %{buildroot}%{_datadir}/bash-completion/completions/deadband
+install -D -m 0644 completions/zsh/_deadband \
+    %{buildroot}%{_datadir}/zsh/site-functions/_deadband
+install -D -m 0644 completions/fish/deadband.fish \
+    %{buildroot}%{_datadir}/fish/vendor_completions.d/deadband.fish
 
 %post
 udevadm control --reload-rules || :
@@ -71,6 +77,9 @@ udevadm control --reload-rules || :
 %{_udevrulesdir}/70-deadband-g502x.rules
 %{_datadir}/applications/deadband.desktop
 %{_datadir}/icons/hicolor/*/apps/deadband.png
+%{_datadir}/bash-completion/completions/deadband
+%{_datadir}/zsh/site-functions/_deadband
+%{_datadir}/fish/vendor_completions.d/deadband.fish
 %{_licensedir}/%{name}/LICENSE
 
 %changelog
