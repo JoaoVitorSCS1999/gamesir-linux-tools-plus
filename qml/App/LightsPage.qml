@@ -338,7 +338,6 @@ Item {
                         delegate: Rectangle {
                             required property int index
                             width: 96; height: 40; radius: 8
-                            color: "#1A1C22"
                             color: page.isZoneSelected(index) ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.14) : "#1A1C22"
                             border.color: page.isZoneSelected(index) ? Theme.accent : Theme.cardBorder
                             border.width: page.isZoneSelected(index) ? 2 : 1

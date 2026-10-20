@@ -5,6 +5,12 @@ and Logitech mice — newest first. This is the
 curated, user-facing summary; the complete history is in git. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com).
 
+## [0.8.1] — 2026-10-19
+
+### Fixed
+- Removed a duplicate QML `color` property that prevented the Lights page and
+  application from loading.
+
 ## [0.8.0] — 2026-10-19
 
 ### Added
