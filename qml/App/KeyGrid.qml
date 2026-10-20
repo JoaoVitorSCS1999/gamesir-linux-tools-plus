@@ -106,7 +106,7 @@ Column {
     Row {
         spacing: 8
         PillButton {
-            label: (kg.showExtended ? "▾ " : "▸ ") + "More keys (F13–F24, numpad)"
+            label: (kg.showExtended ? "▾ " : "▸ ") + I18n.t("More keys (F13–F24, numpad)")
             highlight: kg.showExtended
             onClicked: kg.showExtended = !kg.showExtended
         }

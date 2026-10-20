@@ -172,7 +172,7 @@ Item {
                     Layout.fillWidth: true; Layout.preferredWidth: 1; spacing: 12
                     Card {
                         title: I18n.t("Sequence")
-                        headerValue: page.events.length + " / " + bridge.macroMax + " steps"
+                        headerValue: page.events.length + " / " + bridge.macroMax + " " + I18n.t("steps")
                         Layout.fillWidth: true
                         ListView {
                             id: eventList
@@ -247,7 +247,7 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.preferredWidth: 1; spacing: 12
                     Card {
-                        title: page.sel >= 0 ? "Step " + (page.sel + 1) : "Step"
+                        title: page.sel >= 0 ? I18n.t("Step") + " " + (page.sel + 1) : I18n.t("Step")
                         Layout.fillWidth: true
                         visible: page.sel >= 0 && page.sel < page.events.length
                         Text { text: I18n.t("Button"); color: Theme.textDim

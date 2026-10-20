@@ -58,7 +58,7 @@ Item {
             Card {
                 width: parent.width
                 title: I18n.t("DPI stages")
-                headerValue: mouse.dpiMin + "–" + mouse.dpiMax + " DPI  ·  step " + mouse.dpiStep
+                headerValue: mouse.dpiMin + "–" + mouse.dpiMax + " DPI  ·  " + I18n.t("step") + " " + mouse.dpiStep
 
                 Column {
                     width: parent.width
@@ -165,9 +165,9 @@ Item {
                     color: Theme.textDim
                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                     text: I18n.t("Active is the DPI the mouse boots into. A button set to ")
-                        + "DPI Up / DPI Down / DPI Cycle (on the Buttons tab) steps through "
-                        + "the stages above — so give them distinct values to feel the change. "
-                        + "A Sniper button drops to the Sniper stage only while it's held."
+                        + I18n.t("DPI Up / DPI Down / DPI Cycle (on the Buttons tab) steps through ")
+                        + I18n.t("the stages above — so give them distinct values to feel the change. ")
+                        + I18n.t("A Sniper button drops to the Sniper stage only while it's held.")
                 }
             }
         }

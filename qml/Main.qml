@@ -424,7 +424,7 @@ Window {
                         // "DEMO" is short so it always shows; the longer wordmark
                         // hides when the bar is tight (the tile still brands it).
                         visible: bridge.demoMode || win.width >= 940
-                        text: bridge.demoMode ? "DEMO" : "DEADBAND"
+                        text: bridge.demoMode ? I18n.t("DEMO") : I18n.t("DEADBAND")
                         color: bridge.demoMode ? Theme.warn : Theme.text
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontL
@@ -724,8 +724,8 @@ Window {
                     color: Theme.warn; font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontM; font.weight: Font.DemiBold
                     text: bridge.accessProblem === "backend"
-                          ? "⚠ Found your controller, but the Python hidapi library can't open it"
-                          : "⚠ Found your controller, but Deadband isn't allowed to open it"
+                          ? I18n.t("⚠ Found your controller, but the Python hidapi library can't open it")
+                          : I18n.t("⚠ Found your controller, but Deadband isn't allowed to open it")
                 }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
@@ -894,18 +894,18 @@ Window {
                 Card {
                     anchors.centerIn: parent; width: 460
                     title: g7ReleasedOverlay.claimInProgress
-                           ? "Preparing controller"
+                           ? I18n.t("Preparing controller")
                            : g7ReleasedOverlay.claimFailed
-                           ? "Couldn't configure controller"
-                           : "Controller released to games"
+                           ? I18n.t("Couldn't configure controller")
+                           : I18n.t("Controller released to games")
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
                         text: g7ReleasedOverlay.claimInProgress
                               ? bridge.configStatus
                               : g7ReleasedOverlay.claimFailed
-                              ? bridge.configStatus + "\n\nDeadband will retry when you choose Configure controller."
-                              : "Configuration needs temporary exclusive access to the controller or dongle. " +
-                                "Deadband restores xpad whenever you release it."
+                              ? I18n.t(bridge.configStatus) + "\n\n" + I18n.t("Deadband will retry when you choose Configure controller.")
+                              : I18n.t("Configuration needs temporary exclusive access to the controller or dongle. ") +
+                                I18n.t("Deadband restores xpad whenever you release it.")
                         color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                     }
                     PillButton {

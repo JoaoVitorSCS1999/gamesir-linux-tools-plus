@@ -101,7 +101,7 @@ Item {
 
         // -------- RIGHT: assign a target --------
         Card {
-            title: (page.selIndex < 0 ? "Assign" : "Assign — " + page.selName)
+            title: (page.selIndex < 0 ? I18n.t("Assign") : I18n.t("Assign") + " — " + page.selName)
                    + (page.editLayer === "gshift" ? "  · G-Shift" : "")
             Layout.preferredWidth: 260; Layout.minimumWidth: 220; Layout.fillHeight: true
             Column {
@@ -152,7 +152,7 @@ Item {
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap; topPadding: 4
                     visible: !mouse.busy && mouse.status.length > 0
-                    text: mouse.status
+                    text: I18n.t(mouse.status)
                     color: Theme.textDim
                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }

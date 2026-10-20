@@ -17,7 +17,7 @@ Row {
             color: bridge.connected ? Theme.ok : Theme.textFaint
         }
         Text {
-            text: bridge.connected ? "Connected" : "Searching…"
+            text: bridge.connected ? I18n.t("Connected") : I18n.t("Searching…")
             color: Theme.textDim
             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
             anchors.verticalCenter: parent.verticalCenter
@@ -74,7 +74,7 @@ Row {
             Text {
                 id: wtip
                 anchors.fill: parent; anchors.margins: 10
-                text: bridge.modeMessage
+                text: I18n.t(bridge.modeMessage)
                 color: Theme.text; wrapMode: Text.WordWrap
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 lineHeight: 1.2

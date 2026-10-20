@@ -18,7 +18,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter; spacing: 8
         PillButton { label: I18n.t("Discard"); enabled: !mouse.busy; onClicked: mouse.discard() }
         PillButton {
-            label: mouse.busy ? "Applying…" : "Apply " + mouse.pendingCount
+            label: mouse.busy ? I18n.t("Applying…") : I18n.t("Apply") + " " + mouse.pendingCount
             highlight: !mouse.busy; enabled: !mouse.busy
             onClicked: mouse.apply()
         }

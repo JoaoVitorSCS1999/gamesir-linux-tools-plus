@@ -7,6 +7,14 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+## [0.8.7] — 2026-10-19
+
+### Changed
+- Completed missing interface translations across settings, controller and mouse
+  configuration, lighting, macros, motion sensors, diagnostics, and update flows.
+- Localized controller configuration and apply status messages while preserving
+  device identifiers, firmware details, and error payloads for troubleshooting.
+
 ## [0.8.6] — 2026-10-19
 
 ### Added

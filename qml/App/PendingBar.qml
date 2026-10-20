@@ -36,7 +36,8 @@ Rectangle {
             color: Theme.accent
             Text { id: sl; anchors.centerIn: parent
                    // lighting is global: only say "to Profile N" when a profile setting is staged
-                   text: bridge.pendingHasProfileEdits ? "Save to Profile " + (bridge.profile || "?") : "Save"
+                   text: bridge.pendingHasProfileEdits
+                         ? I18n.t("Save to Profile") + " " + (bridge.profile || "?") : I18n.t("Save")
                    color: Theme.textOnAccent; font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                    font.weight: Font.DemiBold }
             TapHandler { onTapped: bridge.applyConfig() }

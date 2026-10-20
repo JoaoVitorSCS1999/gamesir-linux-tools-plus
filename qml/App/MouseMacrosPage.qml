@@ -213,7 +213,7 @@ Item {
                 // -------- LEFT: sequence + Add event / Record --------
                 Card {
                     title: I18n.t("Sequence")
-                    headerValue: page.steps.length + " step" + (page.steps.length === 1 ? "" : "s")
+                    headerValue: page.steps.length + " " + I18n.t("steps")
                     Layout.preferredWidth: 360; Layout.minimumWidth: 300; Layout.alignment: Qt.AlignTop
                     // pinned above the list so they stay put as steps are added
                     Row {
@@ -297,7 +297,7 @@ Item {
                         title: I18n.t("Button")
                         Layout.fillWidth: true
                         spacing: 5
-                        headerValue: (mouse.macroSlotsFree >= 0 ? mouse.macroSlotsFree + " slots free" : "")
+                        headerValue: (mouse.macroSlotsFree >= 0 ? mouse.macroSlotsFree + " " + I18n.t("slots free") : "")
                                      + (page.committedMacro ? "  ·  runs a macro" : "")
                         headerRight: Component {
                             Row {
@@ -365,7 +365,7 @@ Item {
 
                     // selected-step editor — ALWAYS visible, greyed until a step is selected
                     Card {
-                        title: page.hasSel ? "Step " + (page.sel + 1) : "Step"
+                        title: page.hasSel ? I18n.t("Step") + " " + (page.sel + 1) : I18n.t("Step")
                         Layout.fillWidth: true
                         Column {
                             width: parent.width
@@ -373,7 +373,7 @@ Item {
                             opacity: page.hasSel ? 1 : 0.4
                             spacing: Math.max(6, Math.round(10 * Theme.vComp))
 
-                            Text { text: page.hasSel ? "Action" : "Select a step to edit it"; color: Theme.textDim
+                            Text { text: page.hasSel ? I18n.t("Action") : I18n.t("Select a step to edit it"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Flow {
                                 width: parent.width; spacing: 6
@@ -395,7 +395,7 @@ Item {
                                        anchors.verticalCenter: parent.verticalCenter
                                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                                 PillButton {
-                                    label: (page.curCombo() || "—") + "    ⌨ Change"
+                                    label: (page.curCombo() || "—") + "    ⌨ " + I18n.t("Change")
                                     onClicked: kbPop.open()
                                 }
                             }
@@ -537,7 +537,7 @@ Item {
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: page.recCount + " captured  ·  timing is measured live"
+                    text: page.recCount + " " + I18n.t("captured · timing is measured live")
                     color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 Text {

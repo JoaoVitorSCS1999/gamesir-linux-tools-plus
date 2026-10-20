@@ -44,7 +44,7 @@ Row {
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.compact ? ("P" + pill.n) : ("Profile " + pill.n)
+                    text: root.compact ? ("P" + pill.n) : (I18n.t("Profile") + " " + pill.n)
                     color: pill.sel ? Theme.textOnAccent : Theme.textDim
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontM

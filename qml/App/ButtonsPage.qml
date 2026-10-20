@@ -182,7 +182,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
-                                text: page.targetCode(page.sel) < 0 ? "unmapped" : page.targetLabel(page.sel)
+                                text: page.targetCode(page.sel) < 0 ? I18n.t("Unmapped") : page.targetLabel(page.sel)
                                 color: page.targetCode(page.sel) < 0 ? Theme.textDim : Theme.accent
                                 font.bold: page.targetCode(page.sel) >= 0
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontM

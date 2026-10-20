@@ -148,7 +148,7 @@ Item {
                 Item { width: 8; height: 1 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: page.sec === 0 ? "Aim — point-to-aim gyro" : "Tilt — lean-to-steer gyro"
+                    text: page.sec === 0 ? I18n.t("Aim — point-to-aim gyro") : I18n.t("Tilt — lean-to-steer gyro")
                     color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
             }
@@ -280,7 +280,7 @@ Item {
                     // Directional-Macros output: assign each gyro direction to a
                     // button / key / mouse click (both controllers, when RE'd).
                     Card {
-                        title: bridge.isG7Pro ? "Button Binds" : "Directional Macros"; Layout.fillWidth: true
+                        title: bridge.isG7Pro ? I18n.t("Button Binds") : I18n.t("Directional Macros"); Layout.fillWidth: true
                         visible: page.cur.output === 2 && bridge.motionHasDirMacros
                         Text {
                             visible: bridge.motionHasOverlap

@@ -37,12 +37,12 @@ Window {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
                 PillButton {
-                    label: bridge.diagBusy ? "Running…" : "↺ Re-run"
+                    label: bridge.diagBusy ? I18n.t("Running…") : "↺ " + I18n.t("Re-run")
                     enabled: !bridge.diagBusy
                     onClicked: { win.copied = false; bridge.runDiagnostics() }
                 }
                 PillButton {
-                    label: win.copied ? "✓ Copied" : "Copy report"
+                    label: win.copied ? I18n.t("✓ Copied") : I18n.t("Copy report")
                     highlight: !win.copied
                     enabled: bridge.diagReport.length > 0
                     onClicked: { bridge.copyText(bridge.diagReport); win.copied = true }
@@ -72,7 +72,7 @@ Window {
                     readOnly: true
                     wrapMode: TextEdit.WrapAnywhere
                     text: bridge.diagBusy && bridge.diagReport.length === 0
-                          ? "Collecting…" : bridge.diagReport
+                          ? I18n.t("Collecting…") : I18n.t(bridge.diagReport)
                     color: Theme.text
                     font.family: "monospace"; font.pixelSize: Theme.fontS
                     background: null

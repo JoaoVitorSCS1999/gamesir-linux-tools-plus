@@ -208,7 +208,7 @@ Item {
             Text {
                 Layout.fillWidth: true
                 visible: page.testRunning || page.testError.length > 0
-                text: page.testRunning ? "Testing…" : page.testError
+                text: page.testRunning ? I18n.t("Testing…") : I18n.t(page.testError)
                 wrapMode: Text.WordWrap
                 color: Theme.textDim
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS

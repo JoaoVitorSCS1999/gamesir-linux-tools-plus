@@ -16,10 +16,10 @@ ColumnLayout {
         horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
         font.family: Theme.fontFamily; font.pixelSize: Theme.fontL; color: Theme.text
         text: mouse.permission === "no-access"
-                ? "Your G502 X is connected, but Deadband can't access it yet."
+                ? I18n.t("Your G502 X is connected, but Deadband can't access it yet.")
                 : mouse.permission === "absent"
-                ? "Connect your Logitech G502 X to configure it."
-                : "Looking for a G502 X…"
+                ? I18n.t("Connect your Logitech G502 X to configure it.")
+                : I18n.t("Looking for a G502 X…")
     }
     Card {
         visible: mouse.permission === "no-access"

@@ -201,7 +201,7 @@ Item {
                         model: bridge.presetNames
                         delegate: TextButton {
                             required property string modelData
-                            label: modelData
+                            label: I18n.t(modelData)
                             highlight: bridge.currentPreset === modelData
                             onClicked: bridge.applyPreset(modelData)
                         }
@@ -418,14 +418,14 @@ Item {
                 }
                 Text {
                     width: parent.width
-                    text: page.frames.length + " / 8 keyframes — color changes apply automatically"
+                    text: page.frames.length + " / 8 " + I18n.t("Keyframes — color changes apply automatically")
                     color: Theme.textFaint; font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontS; wrapMode: Text.WordWrap
                 }
                 Row {
                     width: parent.width; spacing: 8
                     TextButton { label: I18n.t("Randomize"); onClicked: page.randomizeFrame() }
-                    TextButton { label: page.playing ? "Pause" : "Play"
+                    TextButton { label: page.playing ? I18n.t("Pause") : I18n.t("Play")
                                  visible: bridge.lightingPlaybackSupported
                                  onClicked: page.togglePlay() }
                 }

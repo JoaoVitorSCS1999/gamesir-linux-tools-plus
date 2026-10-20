@@ -8,7 +8,7 @@ Card {
     title: I18n.t("Live Sensors")
     readonly property var readings: bridge.motionSensors
     readonly property bool streaming: readings.available === true
-    headerValue: streaming ? "Streaming · raw counts" : "No live data"
+    headerValue: streaming ? I18n.t("Streaming · raw counts") : I18n.t("No live data")
 
     RowLayout {
         width: parent.width
@@ -29,8 +29,8 @@ Card {
                     color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 Text {
-                    text: group.index === 0 ? "Rotation · near zero at rest"
-                                           : "Acceleration · includes gravity"
+                    text: group.index === 0 ? I18n.t("Rotation · near zero at rest")
+                                           : I18n.t("Acceleration · includes gravity")
                     color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 Repeater {
@@ -75,8 +75,8 @@ Card {
     Text {
         width: parent.width; wrapMode: Text.WordWrap
         visible: !sensors.streaming
-        text: bridge.configClaimed ? "Waiting for sensor reports…"
-                                  : "Choose Configure controller to view live sensors."
+        text: bridge.configClaimed ? I18n.t("Waiting for sensor reports…")
+                                  : I18n.t("Choose Configure controller to view live sensors.")
         color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
     }
 }

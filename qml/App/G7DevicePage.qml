@@ -37,7 +37,7 @@ Item {
             title: I18n.t("G7 Pro configuration session")
             Text {
                 width: parent.width; wrapMode: Text.WordWrap
-                text: bridge.configStatus + (bridge.configClaimed
+                text: I18n.t(bridge.configStatus) + (bridge.configClaimed
                       ? "\nThe controller or dongle is temporarily unavailable to games."
                       : "\nUse Configure controller above to edit or refresh settings.")
                 color: bridge.configClaimed ? Theme.warn : Theme.textDim

@@ -237,7 +237,7 @@ Item {
             }
 
             Card {
-                title: root.isStick ? "Stick Trajectory" : "Hair Trigger Mode"
+                title: root.isStick ? I18n.t("Stick Trajectory") : I18n.t("Hair Trigger Mode")
                 Layout.fillWidth: true
                 Flow {
                     width: parent.width; spacing: 8
