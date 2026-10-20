@@ -203,6 +203,7 @@ jobs:
       - name: Publish packages
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: JoaoVitorSCS1999/gamesir-linux-tools-plus
           RELEASE_TAG: ${{ needs.release-metadata.outputs.tag }}
         run: |
           set -euo pipefail
