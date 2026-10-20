@@ -18,7 +18,10 @@ Window {
 
     property int currentTab: 0
     property bool settingsOpen: false
-    property bool updateNoticeDismissed: false
+    property string dismissedUpdateVersion: ""
+    property bool manualUpdateCheck: false
+    readonly property bool showUpdateNotice: updateManager.updateAvailable
+                                             && dismissedUpdateVersion !== updateManager.latestVersion
     // Which device the app drives: the controller shell or the G502 X mouse. The
     // device picker flips this, which swaps the nav tabs + content below.
     property string activeDevice: "controller"       // "controller" | "mouse"
@@ -241,12 +244,20 @@ Window {
         repeat: false
         onTriggered: updateManager.checkForUpdates()
     }
+    Timer {
+        interval: 15 * 60 * 1000
+        running: true
+        repeat: true
+        onTriggered: updateManager.checkForUpdates()
+    }
     Connections {
         target: updateManager
         function onStateChanged() {
-            if (updateManager.updateAvailable && !win.updateNoticeDismissed
-                    && !updateDialog.visible)
-                updateDialog.open()
+            if (win.manualUpdateCheck && !updateManager.checking) {
+                win.manualUpdateCheck = false
+                if (updateManager.updateAvailable && !updateDialog.visible)
+                    updateDialog.open()
+            }
         }
     }
     QQC.Dialog {
@@ -255,8 +266,31 @@ Window {
         modal: true
         x: (win.width - width) / 2
         y: (win.height - height) / 2
-        width: 440
-        height: 250
+        width: 460
+        padding: 18
+        background: Rectangle {
+            color: Theme.card
+            border.color: Theme.cardBorder
+            border.width: 1
+            radius: Theme.radius
+        }
+        header: Rectangle {
+            implicitHeight: 48
+            color: Theme.navBar
+            radius: Theme.radius
+            Text {
+                anchors.left: parent.left; anchors.leftMargin: 18
+                anchors.verticalCenter: parent.verticalCenter
+                text: updateDialog.title
+                color: Theme.text
+                font.family: Theme.fontFamily; font.pixelSize: Theme.fontL
+                font.weight: Font.DemiBold
+            }
+            Rectangle {
+                anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+                height: 1; color: Theme.cardBorder
+            }
+        }
         contentItem: Column {
             spacing: 12
             Text {
@@ -284,27 +318,35 @@ Window {
                 color: Theme.textDim
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
             }
-            QQC.ProgressBar {
+            Rectangle {
                 width: parent.width
                 visible: updateManager.busy && updateManager.progress > 0
-                from: 0; to: 100; value: updateManager.progress
+                height: 8; radius: 4; clip: true
+                color: Theme.track
+                Rectangle {
+                    width: parent.width * updateManager.progress / 100
+                    height: parent.height; radius: 4
+                    color: Theme.accent
+                }
             }
             Row {
                 width: parent.width
                 spacing: 8
                 PillButton {
                     label: updateManager.busy ? I18n.t("Updating…")
-                          : (updateManager.installationComplete ? I18n.t("Update installed") : I18n.t("Update now"))
+                          : (updateManager.installationComplete ? I18n.t("Reopen") : I18n.t("Update now"))
                     highlight: true
-                    enabled: updateManager.canInstall && !updateManager.busy
-                             && !updateManager.installationComplete
-                    onClicked: updateManager.installUpdate()
+                    enabled: updateManager.installationComplete
+                             || (updateManager.canInstall && !updateManager.busy)
+                    onClicked: updateManager.installationComplete
+                               ? updateManager.reopenApp()
+                               : updateManager.installUpdate()
                 }
                 PillButton {
                     label: I18n.t("Later")
                     enabled: !updateManager.busy
                     onClicked: {
-                        win.updateNoticeDismissed = true
+                        win.dismissedUpdateVersion = updateManager.latestVersion
                         updateDialog.close()
                     }
                 }
@@ -645,6 +687,41 @@ Window {
                 }
                 HoverHandler { id: gearHov }
                 TapHandler { onTapped: win.settingsOpen = !win.settingsOpen }
+            }
+            Rectangle {
+                id: updateNotice
+                anchors.right: parent.right; anchors.rightMargin: 18
+                anchors.top: parent.bottom; anchors.topMargin: 6
+                z: 120
+                visible: win.showUpdateNotice && !updateDialog.visible
+                width: 210; height: 54; radius: Theme.radius
+                color: Theme.card
+                border.color: Theme.accent; border.width: 1
+                Row {
+                    anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 10
+                    spacing: 9
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 8; height: 8; radius: 4; color: Theme.accent
+                    }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 2
+                        Text {
+                            text: I18n.t("Update available")
+                            color: Theme.text
+                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
+                            font.weight: Font.DemiBold
+                        }
+                        Text {
+                            text: I18n.t("Version") + " " + updateManager.latestVersion
+                            color: Theme.textDim
+                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS - 1
+                        }
+                    }
+                }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: updateDialog.open() }
             }
         }
 
@@ -1281,12 +1358,14 @@ Window {
                             label: I18n.t(updateManager.checking ? "Checking for updates…" : "Check for updates")
                             enabled: !updateManager.checking && !updateManager.busy
                             onClicked: {
-                                win.updateNoticeDismissed = false
+                                win.manualUpdateCheck = true
                                 updateManager.checkForUpdates()
                             }
                         }
                         Text {
                             visible: updateManager.status.length > 0
+                                     && (updateManager.updateAvailable || updateManager.busy
+                                         || win.manualUpdateCheck)
                             width: parent.width; wrapMode: Text.WordWrap
                             text: I18n.t(updateManager.status)
                             color: Theme.textDim

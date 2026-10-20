@@ -6,11 +6,12 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import urllib.request
 
-from PySide6.QtCore import QObject, Property, QProcess, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QObject, Property, QProcess, Signal, Slot
 
 
 OWNER = 'JoaoVitorSCS1999'
@@ -119,7 +120,7 @@ class UpdateManager(QObject):
 
     @Slot()
     def checkForUpdates(self):
-        if self._checking:
+        if self._checking or self._busy:
             return
         self._checking = True
         self._status = 'Checking for updates…'
@@ -206,6 +207,25 @@ class UpdateManager(QObject):
         self.stateChanged.emit()
         threading.Thread(target=self._download_worker, daemon=True).start()
 
+    @Slot()
+    def reopenApp(self):
+        """Start the newly installed app, then close this old process."""
+        if not self._installed:
+            return
+        program = (os.environ.get('APPIMAGE') if self._kind == 'appimage'
+                   else sys.argv[0]) or sys.argv[0]
+        if not os.path.isabs(program):
+            program = shutil.which(program) or os.path.abspath(program)
+        try:
+            subprocess.Popen([program, *sys.argv[1:]],
+                             cwd=os.getcwd(), env=os.environ.copy(),
+                             close_fds=True, start_new_session=True)
+        except OSError as exc:
+            self._status = 'Could not reopen Deadband: ' + str(exc)
+            self.stateChanged.emit()
+            return
+        QCoreApplication.quit()
+
     def _download_worker(self):
         temp_path = ''
         try:
@@ -268,7 +288,7 @@ class UpdateManager(QObject):
                 self._busy = False
                 self._progress = 100
                 self._installed = True
-                self._status = 'Update installed. Close and reopen Deadband to use it.'
+                self._status = 'Update installed. Select Reopen to use it.'
             except OSError as exc:
                 try:
                     os.unlink(path)
@@ -317,7 +337,7 @@ class UpdateManager(QObject):
         if exit_code == 0:
             self._progress = 100
             self._installed = True
-            self._status = 'Update installed. Close and reopen Deadband to use it.'
+            self._status = 'Update installed. Select Reopen to use it.'
         else:
             self._status = 'The package manager cancelled or could not install the update.'
         self.stateChanged.emit()

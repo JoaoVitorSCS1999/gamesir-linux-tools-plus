@@ -7,6 +7,16 @@ curated, user-facing summary; the complete history is in git. Format loosely fol
 
 ## [Unreleased]
 
+## [0.8.8] — 2026-10-20
+
+### Added
+- Check for stable updates at startup and every 15 minutes; show a dismissible,
+  themed notice beside the settings gear when a newer release is available.
+- Reopen the app directly after installing an update.
+
+### Changed
+- Restyled the update dialog and progress bar to follow the selected app theme.
+
 ## [0.8.7] — 2026-10-19
 
 ### Changed
