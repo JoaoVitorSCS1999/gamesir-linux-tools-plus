@@ -60,8 +60,8 @@ The configurable models offer:
   vendor channel, with a copy-paste report for bug reports (see
   [Something not working?](#something-not-working)).
 
-Every page wears your palette — six built-in theme presets (and full custom
-colors). The gallery below rotates through five pages, each in a different
+Every page wears your palette — seven built-in theme presets (including Gruvbox),
+custom colors, and JSON theme import/export. The gallery below rotates through five pages, each in a different
 theme; click it (or the caption link) to step through them one at a time:
 
 <p align="center">
@@ -72,13 +72,13 @@ theme; click it (or the caption link) to step through them one at a time:
   <em><a href="docs/screenshots/README.md">Browse the screenshot tour ▶</a></em>
 </p>
 
-**Version:** `0.8.3` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
+**Version:** `0.8.4` — Deadband: multi-device (Cyclone 2 + G7 Pro + G7 SE +
 G7 Pro 8K PC + Tarantula Pro 8K + Kaleid controllers, G502 X mouse), the full Qt/QML app (lighting + keyframe editor,
 config editor, remaps, macros, backup/restore), built-in diagnostics,
 one-command install, an [AUR package](https://aur.archlinux.org/packages/deadband-git),
 and a [community NixOS flake](https://codeberg.org/Epaphroditus/gamesir-linux-tools-nix).
 Tracks `main` (the AUR `-git` package builds from the latest commit); last tagged
-snapshot is `v0.8.3`.
+snapshot is `v0.8.4`.
 **Going deeper?** The **[Manual](MANUAL.md)** is the user guide — how to use each
 feature, troubleshooting & recovery, and an FAQ. **[RESEARCH.md](RESEARCH.md)** is the
 developer side — protocol, architecture, the diagnostic tools, and per-controller

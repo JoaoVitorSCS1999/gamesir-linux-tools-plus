@@ -5,6 +5,16 @@ and Logitech mice — newest first. This is the
 curated, user-facing summary; the complete history is in git. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com).
 
+## [Unreleased]
+
+## [0.8.4] — 2026-10-19
+
+### Added
+- Gruvbox theme preset and import/export of custom themes as JSON files.
+
+### Changed
+- Language and theme selectors now use the app's compact, themed dropdown controls.
+
 ## [0.8.3] — 2026-10-19
 
 ### Added

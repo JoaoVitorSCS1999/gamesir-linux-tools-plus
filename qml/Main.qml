@@ -64,6 +64,7 @@ Window {
         property string density: "comfortable"
         property string language: ""
         property string themeJson: "{}"     // {token: colorString} overrides
+        property string themePreset: "GameSir Red"
         property string bgImage: ""         // background image file url ("" = none)
         property real   bgDim: 0.55          // 0 = full image .. 1 = full theme bg
         property string bgFill: "crop"       // crop | fit | stretch | tile
@@ -142,20 +143,53 @@ Window {
     function _parseTheme() {
         try { return JSON.parse(appearance.themeJson || "{}") } catch (e) { return {} }
     }
+    function _currentThemeMap() {
+        var colors = {}
+        for (var i = 0; i < Theme.themeKeys.length; i++) {
+            var key = Theme.themeKeys[i].key
+            colors[key] = Theme[key].toString()
+        }
+        return colors
+    }
     function applyThemeJson() { Theme.applyColors(_parseTheme()) }
     function setThemeColor(key, c) {
         Theme[key] = c
         var o = _parseTheme(); o[key] = c.toString(); appearance.themeJson = JSON.stringify(o)
+        appearance.themePreset = ""
     }
-    function applyPreset(colors) {
+    function applyPreset(colors, name) {
         Theme.resetColors(); Theme.applyColors(colors)
         var o = {}
         for (var i = 0; i < Theme.themeKeys.length; i++) {
             var k = Theme.themeKeys[i].key; o[k] = Theme[k].toString()
         }
         appearance.themeJson = JSON.stringify(o)
+        appearance.themePreset = name || ""
     }
-    function resetTheme() { Theme.resetColors(); appearance.themeJson = "{}" }
+    function resetTheme() {
+        Theme.resetColors(); appearance.themeJson = "{}"; appearance.themePreset = "GameSir Red"
+        themeFileStatus = ""; themeFileError = false
+    }
+    function applyImportedTheme(colorsJson) {
+        try {
+            var colors = JSON.parse(colorsJson)
+            Theme.resetColors(); Theme.applyColors(colors)
+            var normalized = {}
+            for (var i = 0; i < Theme.themeKeys.length; i++) {
+                var key = Theme.themeKeys[i].key
+                if (colors[key] !== undefined) normalized[key] = colors[key]
+            }
+            appearance.themeJson = JSON.stringify(normalized)
+            appearance.themePreset = ""
+            themeFileStatus = I18n.t("Theme imported")
+            themeFileError = false
+        } catch (e) {
+            themeFileStatus = I18n.t("Could not import theme") + ": " + e
+            themeFileError = true
+        }
+    }
+    property string themeFileStatus: ""
+    property bool themeFileError: false
 
     // Is the chosen background a video (played by MediaPlayer) vs a still/gif
     // image (AnimatedImage)? Drives which background layer is active.
@@ -170,6 +204,34 @@ Window {
                       "Video (*.webm *.mp4 *.mkv *.mov *.m4v)",
                       "All files (*)"]
         onAccepted: appearance.bgImage = selectedFile.toString()
+    }
+    FileDialog {
+        id: exportThemeDialog
+        fileMode: FileDialog.SaveFile
+        title: I18n.t("Export theme")
+        nameFilters: ["JSON files (*.json)"]
+        defaultSuffix: "json"
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        onAccepted: {
+            var err = bridge.exportTheme(selectedFile, JSON.stringify(win._currentThemeMap()))
+            win.themeFileStatus = err ? I18n.t("Could not export theme") + ": " + err
+                                              : I18n.t("Theme exported")
+            win.themeFileError = !!err
+        }
+    }
+    FileDialog {
+        id: importThemeDialog
+        fileMode: FileDialog.OpenFile
+        title: I18n.t("Import theme")
+        nameFilters: ["JSON files (*.json)"]
+        onAccepted: {
+            var result = bridge.importTheme(selectedFile)
+            if (result.indexOf("ERROR:") === 0)
+                win.themeFileStatus = I18n.t("Could not import theme") + ": " + result.slice(6)
+                            win.themeFileError = true
+            else
+                win.applyImportedTheme(result)
+        }
     }
 
     Timer {
@@ -926,10 +988,9 @@ Window {
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                             }
-                            QQC.ComboBox {
-                                width: 220
-                                model: I18n.languages
-                                textRole: "name"
+                            DropdownButton {
+                                model: I18n.languages.map(function(language) { return language.name })
+                                placeholderText: I18n.t("English")
                                 currentIndex: {
                                     for (var i = 0; i < I18n.languages.length; i++)
                                         if (I18n.languages[i].code === I18n.language) return i
@@ -998,16 +1059,38 @@ Window {
                             text: I18n.t("Presets"); color: Theme.textDim; topPadding: 2
                             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
-                        Flow {
+                        Row {
                             width: parent.width; spacing: 8
-                            Repeater {
-                                model: Theme.presets
-                                delegate: PillButton {
-                                    required property var modelData
-                                    label: modelData.name
-                                    onClicked: win.applyPreset(modelData.colors)
+                            DropdownButton {
+                                model: Theme.presets.map(function(preset) { return preset.name })
+                                currentIndex: {
+                                    for (var i = 0; i < Theme.presets.length; i++)
+                                        if (Theme.presets[i].name === appearance.themePreset) return i
+                                    return -1
+                                }
+                                placeholderText: I18n.t("Custom")
+                                onActivated: function(index) {
+                                    var preset = Theme.presets[index]
+                                    win.applyPreset(preset.colors, preset.name)
+                                    win.themeFileStatus = ""
+                                    win.themeFileError = false
                                 }
                             }
+                            PillButton { label: I18n.t("Import…"); onClicked: importThemeDialog.open() }
+                            PillButton {
+                                label: I18n.t("Export…")
+                                onClicked: {
+                                    exportThemeDialog.selectedFile = exportThemeDialog.currentFolder + "/deadband-theme.json"
+                                    exportThemeDialog.open()
+                                }
+                            }
+                        }
+                        Text {
+                            visible: win.themeFileStatus.length > 0
+                            width: parent.width; wrapMode: Text.WordWrap
+                            text: win.themeFileStatus
+                            color: win.themeFileError ? Theme.warn : Theme.ok
+                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         Text {
                             text: I18n.t("Custom colors"); color: Theme.textDim; topPadding: 4

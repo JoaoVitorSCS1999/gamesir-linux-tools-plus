@@ -21,6 +21,10 @@ The interface follows a supported system language on first launch; change it lat
 in **Settings → Appearance → Language**. Available languages are Brazilian
 Portuguese, Japanese, Spanish, Russian, Simplified Chinese, Korean, Hindi, German,
 and Polish, with English as the fallback.
+On first launch, the app selects the matching language from the desktop locale and
+remembers it; if the system is set to English (or an unsupported language), it
+starts in English. In **Settings → Appearance**, choose a theme preset such as
+Gruvbox, or use **Import…** and **Export…** to share custom themes as JSON files.
 Everything below assumes the controller is connected and in **Xbox / XInput
 mode**. A G7 Pro at `3537:100a` is transitioned automatically to wired `3537:109b`
 or dongle `3537:109c`. If it shows `3537:1022`, hold **SHARE + MENU (☰)** together (note this
