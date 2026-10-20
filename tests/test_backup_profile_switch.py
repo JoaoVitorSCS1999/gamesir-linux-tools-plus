@@ -58,6 +58,10 @@ class BackupProfileSwitchTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.patches = [
             patch.dict(state, profile=1, profile_seq=0, connected=True),
+            # Saves write recovery files: keep them in the temp dir, never in the
+            # user's real ~/.local/share/deadband (they're capped at 20, so test
+            # files used to push real snapshots out)
+            patch.dict(os.environ, XDG_DATA_HOME=self.tmp.name),
             patch.object(control, '_switch_sent_seq', None),
             patch.object(control, '_switch_target', None),
             patch.object(control, 'set_profile', self.pad.set_profile),
