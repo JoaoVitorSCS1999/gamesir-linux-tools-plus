@@ -5,6 +5,17 @@ and Logitech mice — newest first. This is the
 curated, user-facing summary; the complete history is in git. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com).
 
+## [0.8.2] — 2026-10-19
+
+### Added
+- Check for stable releases at startup and install RPM, DEB, Arch, or AppImage
+  updates from inside Deadband. Downloads are checked against GitHub's SHA-256
+  digest before installation.
+
+### Changed
+- Lighting color drags now send only the changed bytes and coalesce pending USB
+  updates to the latest pointer position, making palette previews more responsive.
+
 ## [0.8.1] — 2026-10-19
 
 ### Fixed

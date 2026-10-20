@@ -30,6 +30,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from reader import read_controller, press_select_loop, release_controller
 from bridge import GamesirBridge
 from mouse_bridge import MouseBridge
+from update_manager import UpdateManager
 import kwin
 import mousegrab
 
@@ -87,6 +88,8 @@ def main():
     engine.addImportPath(QML_DIR)                 # makes `import App` resolve
     bridge = GamesirBridge()
     engine.rootContext().setContextProperty('bridge', bridge)
+    updater = UpdateManager(__version__)
+    engine.rootContext().setContextProperty('updateManager', updater)
     mouse = MouseBridge()
     engine.rootContext().setContextProperty('mouse', mouse)
     engine.rootContext().setContextProperty('appVersion', __version__)

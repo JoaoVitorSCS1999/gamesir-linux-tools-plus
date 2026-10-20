@@ -17,6 +17,7 @@ Rectangle {
     color: highlight ? Theme.accent : (hh.hovered ? Theme.buttonHover : Theme.button)
     border.color: highlight ? Qt.lighter(Theme.accent, 1.2) : Theme.cardBorder
     border.width: 1
+    opacity: enabled ? 1 : 0.45
     Behavior on color { ColorAnimation { duration: 100 } }
     Row {
         id: row
@@ -36,5 +37,5 @@ Rectangle {
         }
     }
     HoverHandler { id: hh }
-    TapHandler { onTapped: b.clicked() }
+    TapHandler { enabled: b.enabled; onTapped: b.clicked() }
 }

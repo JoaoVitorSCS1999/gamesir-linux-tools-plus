@@ -196,6 +196,11 @@ class GamesirBridge(QObject):
         self._light_keys = set()
         self._lighting_inflight = {}
         self._led_rec_slot = None       # slot whose record _light_loaded holds
+        self._keyframe_cache_pending = None
+        self._keyframe_cache_timer = QTimer(self)
+        self._keyframe_cache_timer.setSingleShot(True)
+        self._keyframe_cache_timer.setInterval(250)
+        self._keyframe_cache_timer.timeout.connect(self._flush_keyframe_cache)
 
         # Per-profile config read-back + staged edits (Sticks/Triggers/Vibration).
         self._loaded_profile = None
@@ -544,7 +549,7 @@ class GamesirBridge(QObject):
             self._pending = keep
             self.pendingChanged.emit()
 
-    def _stage_light(self, addr, data, label, display):
+    def _stage_light(self, addr, data, label, display, auto_apply=False):
         """Stage bank-0x20 bytes against read-back. A value equal to the pad is
         dropped, so pending state only counts real edits."""
         if not profiles.is_recognized():
@@ -561,11 +566,22 @@ class GamesirBridge(QObject):
             self._pending.pop(key, None)
         else:
             self._pending[key] = {'addr': addr, 'bank': led.LED_BANK, 'data': data,
-                                  'label': label, 'display': display, 'kind': 'lighting'}
+                                  'label': label, 'display': display, 'kind': 'lighting',
+                                  'auto_apply': bool(auto_apply)}
         self._light_keys = {k for k in self._pending
                             if isinstance(k, tuple) and k[:1] == ('light',)}
         self.pendingChanged.emit()
         return True
+
+    def _show_auto_lighting_pending(self, keys=None):
+        """Expose a live color as an ordinary pending Save if auto-write is refused."""
+        changed = False
+        for key, record in self._pending.items():
+            if (keys is None or key in keys) and record.get('auto_apply'):
+                record['auto_apply'] = False
+                changed = True
+        if changed:
+            self.pendingChanged.emit()
 
     def _is_8k_lighting(self):
         return (profiles.is_recognized()
@@ -1557,12 +1573,13 @@ class GamesirBridge(QObject):
             return None
         return self._staged_light(led.record_addr(slot))
 
-    def _stage_record(self, record):
+    def _stage_record(self, record, auto_apply=False):
         slot = self._led_rec_slot
         if slot is None or not _keyframe_lighting():
             return False
         return self._stage_light(led.record_addr(slot), record,
-                                 f'Lighting profile {slot + 1}', self._record_display(record))
+                                 f'Lighting profile {slot + 1}', self._record_display(record),
+                                 auto_apply=auto_apply)
 
     @staticmethod
     def _record_display(record):
@@ -2168,10 +2185,17 @@ class GamesirBridge(QObject):
         if led.decode_record(cur)['frames'][:len(norm)] == led.decode_record(rec)['frames'][:len(norm)] \
                 and cur[0] == rec[0]:
             return
-        if self._stage_record(rec):
-            kf_cache.save(self._led_rec_slot, norm, len(norm))
+        if self._stage_record(rec, auto_apply=True):
+            self._keyframe_cache_pending = (self._led_rec_slot, norm)
+            self._keyframe_cache_timer.start()
             self.lightsChanged.emit()
             self.applyLighting()
+
+    @Slot()
+    def _flush_keyframe_cache(self):
+        pending, self._keyframe_cache_pending = self._keyframe_cache_pending, None
+        if pending is not None:
+            kf_cache.save(pending[0], pending[1], len(pending[1]))
 
     @Slot(bool, int)
     def setPlayback(self, playing, frame):
@@ -2388,6 +2412,8 @@ class GamesirBridge(QObject):
         brightness together; each of those the user changed counts on its own."""
         items = []
         for _key, r in sorted(self._pending.items(), key=lambda item: str(item[0])):
+            if r.get('auto_apply'):
+                continue
             parts = self._record_changes(r) if r.get('kind') == 'lighting' else None
             items += parts if parts else [(r['label'], r['display'])]
         return items
@@ -2795,6 +2821,7 @@ class GamesirBridge(QObject):
                 or not state.get('connected') or self._driving != state.get('driving')
                 or state.get('driving') != state.get('selected')):
             self._set_apply_status('Apply refused: controller selection changed; reload its settings')
+            self._show_auto_lighting_pending()
             return
         if self._is_8k_lighting():
             auto_addresses = set(led8k.HOME_Q)
@@ -2807,6 +2834,7 @@ class GamesirBridge(QObject):
             if record.get('kind') == 'lighting' and record['addr'] in auto_addresses
         }
         if not snapshot:
+            self._show_auto_lighting_pending()
             return
 
         originals = {}
@@ -2814,8 +2842,55 @@ class GamesirBridge(QObject):
             base = self._light_loaded.get(record['addr'])
             if base is None or len(base) < len(record['data']):
                 self._set_apply_status('Lighting is still being read from the controller; try again')
+                self._show_auto_lighting_pending([key])
                 return
             originals[key] = list(base[:len(record['data'])])
+
+        # Color drags usually alter only one 15-byte frame inside the 124-byte
+        # lighting record. Send the smallest contiguous changed span so a drag
+        # takes one USB command instead of three full-record chunks. The 8K's
+        # quadrant registers are adjacent 4-byte blocks, so selected quadrants
+        # are sent together in one command as well.
+        writes = []
+        if self._is_8k_lighting():
+            selected = {record['addr']: record for record in snapshot.values()}
+            addresses = sorted(selected)
+            if addresses:
+                first, last = addresses[0], addresses[-1]
+                old = []
+                data = []
+                for addr in range(first, last + 4, 4):
+                    source = self._light_loaded.get(addr)
+                    if source is None or len(source) < 4:
+                        self._set_apply_status('Lighting is still being read from the controller; try again')
+                        self._show_auto_lighting_pending()
+                        return
+                    old.extend(source[:4])
+                    record = selected.get(addr)
+                    data.extend(record['data'][:4] if record else source[:4])
+                if data != old:
+                    writes.append({'keys': list(snapshot), 'addr': first, 'old': old,
+                                   'data': data, 'records': selected})
+        else:
+            for key, record in snapshot.items():
+                old = originals[key]
+                data = list(record['data'])
+                changed = [i for i, (before, after) in enumerate(zip(old, data))
+                           if before != after]
+                if not changed:
+                    continue
+                start, end = changed[0], changed[-1] + 1
+                writes.append({'keys': [key], 'addr': record['addr'] + start,
+                               'offset': start, 'old': old[start:end],
+                               'data': data[start:end], 'record': record})
+        if not writes:
+            for key, record in snapshot.items():
+                if self._pending.get(key) == record:
+                    self._pending.pop(key, None)
+            self._light_keys = {k for k in self._pending
+                                if isinstance(k, tuple) and k[:1] == ('light',)}
+            self.pendingChanged.emit()
+            return
 
         prof, gen = self._prof, control.generation()
         self._lighting_inflight = {
@@ -2823,53 +2898,67 @@ class GamesirBridge(QObject):
         }
         self._backup_busy = True
         self.backupBusyChanged.emit()
-        self._set_apply_status('Applying colour…')
-
         def run():
             attempted = []
             try:
-                for key, record in snapshot.items():
+                for write in writes:
                     if (gen != control.generation() or self._prof is not prof
                             or profiles.active() is not prof or not state.get('connected')
                             or self._driving != state.get('driving')
                             or state.get('driving') != state.get('selected')):
                         raise OSError('controller session changed')
-                    attempted.append(key)
-                    if not control.write_reg(record['bank'], record['addr'], record['data'],
+                    attempted.append(write)
+                    if not control.write_reg(led.LED_BANK, write['addr'], write['data'],
                                              write_style=prof.write_style, gen=gen):
-                        raise OSError(f'color write refused at 0x{record["addr"]:04x}')
+                        raise OSError(f'color write refused at 0x{write["addr"]:04x}')
 
-                # The transport accepted every paced packet. Promote those bytes
-                # to the live base so the UI no longer reports them as unsaved.
+                # Promote just the bytes written. During a color drag this is
+                # normally one frame (one packet); structural changes still
+                # transfer the full record before they are considered applied.
+                for write in writes:
+                    if self._is_8k_lighting():
+                        for offset, addr in enumerate(range(write['addr'],
+                                                            write['addr'] + len(write['data']), 4)):
+                            base = self._light_loaded.get(addr)
+                            if base is not None:
+                                start = offset * 4
+                                base[:4] = write['data'][start:start + 4]
+                    else:
+                        record = write['record']
+                        base = self._light_loaded.get(record['addr'])
+                        if base is not None:
+                            start = write['offset']
+                            base[start:start + len(write['data'])] = write['data']
                 for key, record in snapshot.items():
-                    addr = record['addr']
-                    base = self._light_loaded.get(addr)
-                    if base is not None:
-                        base[:len(record['data'])] = record['data']
-                    if self._pending.get(key) == record:
+                    base = self._light_loaded.get(record['addr'])
+                    if (self._pending.get(key) == record and base is not None
+                            and base[:len(record['data'])] == record['data']):
                         del self._pending[key]
                 self._light_keys = {k for k in self._pending
                                     if isinstance(k, tuple) and k[:1] == ('light',)}
-                self._set_apply_status('Color sent to controller')
                 self.pendingChanged.emit()
             except Exception as exc:
                 rollback_ok = True
-                for key in reversed(attempted):
-                    record = snapshot[key]
+                for write in reversed(attempted):
                     try:
                         rollback_ok = (control.write_reg(
-                            record['bank'], record['addr'], originals[key],
+                            led.LED_BANK, write['addr'], write['old'],
                             write_style=prof.write_style, gen=gen) and rollback_ok)
                     except Exception:
                         rollback_ok = False
+                for key, current in self._pending.items():
+                    if key in snapshot:
+                        current['auto_apply'] = False
                 if rollback_ok and attempted:
-                    for key in attempted:
-                        current = self._pending.get(key)
-                        if current is not None and current.get('data') == originals[key]:
-                            del self._pending[key]
+                    for write in attempted:
+                        for key in write['keys']:
+                            current = self._pending.get(key)
+                            if current is not None:
+                                if current.get('data') == originals.get(key):
+                                    del self._pending[key]
                     self._light_keys = {k for k in self._pending
                                         if isinstance(k, tuple) and k[:1] == ('light',)}
-                    self.pendingChanged.emit()
+                self.pendingChanged.emit()
                 suffix = '; previous color restored' if rollback_ok and attempted else ''
                 if attempted and not rollback_ok:
                     suffix = '; previous color could not be confirmed'

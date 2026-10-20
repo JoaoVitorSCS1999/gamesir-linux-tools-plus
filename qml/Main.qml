@@ -18,6 +18,7 @@ Window {
 
     property int currentTab: 0
     property bool settingsOpen: false
+    property bool updateNoticeDismissed: false
     // Which device the app drives: the controller shell or the G502 X mouse. The
     // device picker flips this, which swaps the nav tabs + content below.
     property string activeDevice: "controller"       // "controller" | "mouse"
@@ -151,6 +152,76 @@ Window {
                       "Video (*.webm *.mp4 *.mkv *.mov *.m4v)",
                       "All files (*)"]
         onAccepted: appearance.bgImage = selectedFile.toString()
+    }
+
+    Timer {
+        interval: 1500
+        running: true
+        repeat: false
+        onTriggered: updateManager.checkForUpdates()
+    }
+    Connections {
+        target: updateManager
+        function onStateChanged() {
+            if (updateManager.updateAvailable && !win.updateNoticeDismissed
+                    && !updateDialog.visible)
+                updateDialog.open()
+        }
+    }
+    QQC.Dialog {
+        id: updateDialog
+        title: "Deadband update available"
+        modal: true
+        x: (win.width - width) / 2
+        y: (win.height - height) / 2
+        width: 440
+        height: 220
+        contentItem: Column {
+            spacing: 12
+            Text {
+                width: parent.width
+                text: updateManager.canInstall
+                    ? "Version " + updateManager.latestVersion + " is available. "
+                      + "Deadband will download and verify the update before installing it."
+                    : "Version " + updateManager.latestVersion + " is available, but no compatible "
+                      + "package was found for this installation."
+                wrapMode: Text.WordWrap
+                color: Theme.text
+                font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
+            }
+            Text {
+                width: parent.width
+                text: updateManager.status
+                wrapMode: Text.WordWrap
+                color: Theme.textDim
+                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
+            }
+            QQC.ProgressBar {
+                width: parent.width
+                visible: updateManager.busy && updateManager.progress > 0
+                from: 0; to: 100; value: updateManager.progress
+            }
+            Row {
+                width: parent.width
+                spacing: 8
+                PillButton {
+                    label: updateManager.busy ? "Updating…"
+                          : (updateManager.installationComplete ? "Update installed" : "Update now")
+                    highlight: true
+                    enabled: updateManager.canInstall && !updateManager.busy
+                             && !updateManager.installationComplete
+                    onClicked: updateManager.installUpdate()
+                }
+                PillButton {
+                    label: "Later"
+                    enabled: !updateManager.busy
+                    onClicked: {
+                        win.updateNoticeDismissed = true
+                        updateDialog.close()
+                    }
+                }
+            }
+        }
     }
 
     // Base wash: a faint themed glow at the top (Theme.bgGlow) fading into the
@@ -1075,6 +1146,21 @@ Window {
                         PillButton {
                             label: "🩺 Open diagnostics…"
                             onClicked: { diagWin.show(); diagWin.raise() }
+                        }
+                        PillButton {
+                            label: updateManager.checking ? "Checking for updates…" : "Check for updates"
+                            enabled: !updateManager.checking && !updateManager.busy
+                            onClicked: {
+                                win.updateNoticeDismissed = false
+                                updateManager.checkForUpdates()
+                            }
+                        }
+                        Text {
+                            visible: updateManager.status.length > 0
+                            width: parent.width; wrapMode: Text.WordWrap
+                            text: updateManager.status
+                            color: Theme.textDim
+                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
 
                     }
