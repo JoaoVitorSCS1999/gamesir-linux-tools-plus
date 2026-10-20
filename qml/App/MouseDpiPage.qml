@@ -57,7 +57,7 @@ Item {
             // ---- DPI stages ----
             Card {
                 width: parent.width
-                title: "DPI stages"
+                title: I18n.t("DPI stages")
                 headerValue: mouse.dpiMin + "–" + mouse.dpiMax + " DPI  ·  step " + mouse.dpiStep
 
                 Column {
@@ -105,7 +105,7 @@ Item {
 
                                 // fine −/+ by one sensor step
                                 PillButton {
-                                    label: "−"
+                                    label: I18n.t("−")
                                     onClicked: mouse.stageDpi(row.index, page.dpiVal(row.index) - mouse.dpiStep)
                                 }
                                 Text {
@@ -117,17 +117,17 @@ Item {
                                     font.weight: Font.DemiBold
                                 }
                                 PillButton {
-                                    label: "+"
+                                    label: I18n.t("+")
                                     onClicked: mouse.stageDpi(row.index, page.dpiVal(row.index) + mouse.dpiStep)
                                 }
 
                                 // which stage is Active (boot) vs Sniper (shift-DPI)
                                 PillButton {
-                                    label: "Active"; highlight: row.isActive
+                                    label: I18n.t("Active"); highlight: row.isActive
                                     onClicked: mouse.stageDpiDefault(row.index)
                                 }
                                 PillButton {
-                                    label: "Sniper"; highlight: row.isSniper
+                                    label: I18n.t("Sniper"); highlight: row.isSniper
                                     onClicked: mouse.stageDpiShift(row.index)
                                 }
                             }
@@ -139,7 +139,7 @@ Item {
             // ---- Report rate ----
             Card {
                 width: parent.width
-                title: "Report rate"
+                title: I18n.t("Report rate")
                 headerValue: page.rateVal() + " Hz"
 
                 Flow {
@@ -159,12 +159,12 @@ Item {
             // ---- how it works ----
             Card {
                 width: parent.width
-                title: "How the DPI buttons work"
+                title: I18n.t("How the DPI buttons work")
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
                     color: Theme.textDim
                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
-                    text: "Active is the DPI the mouse boots into. A button set to "
+                    text: I18n.t("Active is the DPI the mouse boots into. A button set to ")
                         + "DPI Up / DPI Down / DPI Cycle (on the Buttons tab) steps through "
                         + "the stages above — so give them distinct values to feel the change. "
                         + "A Sniper button drops to the Sniper stage only while it's held."

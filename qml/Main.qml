@@ -14,7 +14,7 @@ Window {
     minimumHeight: 620
     visible: true
     color: Theme.bg
-    title: "Deadband"
+    title: I18n.t("Deadband")
 
     property int currentTab: 0
     property bool settingsOpen: false
@@ -62,6 +62,7 @@ Window {
         id: appearance
         category: "appearance"
         property string density: "comfortable"
+        property string language: ""
         property string themeJson: "{}"     // {token: colorString} overrides
         property string bgImage: ""         // background image file url ("" = none)
         property real   bgDim: 0.55          // 0 = full image .. 1 = full theme bg
@@ -83,6 +84,8 @@ Window {
     }
     Component.onCompleted: {
         Theme.density = appearance.density
+        I18n.language = resolveLanguage(appearance.language)
+        if (!appearance.language) appearance.language = I18n.language
         applyThemeJson()
         _loadNames()
     }
@@ -99,6 +102,21 @@ Window {
         function onControllerChanged() { win.currentTab = 0; Theme.vComp = 1 }
     }
     function setDensity(d) { Theme.density = d; appearance.density = d }
+    function resolveLanguage(saved) {
+        if (saved) return saved
+        var locale = Qt.locale().name.toLowerCase()
+        if (locale.indexOf("pt") === 0) return "pt_BR"
+        if (locale.indexOf("ja") === 0) return "ja"
+        if (locale.indexOf("es") === 0) return "es"
+        if (locale.indexOf("ru") === 0) return "ru"
+        if (locale.indexOf("zh") === 0) return "zh_CN"
+        if (locale.indexOf("ko") === 0) return "ko"
+        if (locale.indexOf("hi") === 0) return "hi"
+        if (locale.indexOf("de") === 0) return "de"
+        if (locale.indexOf("pl") === 0) return "pl"
+        return "en"
+    }
+    function setLanguage(code) { I18n.language = code; appearance.language = code }
 
     // --- controller naming (port-keyed; see the ctrlNames Settings note) ------
     property var controllerNames: ({})
@@ -146,7 +164,7 @@ Window {
     // File picker for the background (png / jpeg / gif image, or webm / mp4 video).
     FileDialog {
         id: bgDialog
-        title: "Choose a background image or video"
+        title: I18n.t("Choose a background image or video")
         nameFilters: ["Images & video (*.png *.jpg *.jpeg *.gif *.webm *.mp4 *.mkv *.mov *.m4v)",
                       "Images (*.png *.jpg *.jpeg *.gif)",
                       "Video (*.webm *.mp4 *.mkv *.mov *.m4v)",
@@ -170,7 +188,7 @@ Window {
     }
     QQC.Dialog {
         id: updateDialog
-        title: "Deadband update available"
+        title: I18n.t("Deadband update available")
         modal: true
         x: (win.width - width) / 2
         y: (win.height - height) / 2
@@ -181,17 +199,15 @@ Window {
             Text {
                 width: parent.width
                 text: updateManager.canInstall
-                    ? "Version " + updateManager.latestVersion + " is available. "
-                      + "Deadband will download and verify the update before installing it."
-                    : "Version " + updateManager.latestVersion + " is available, but no compatible "
-                      + "package was found for this installation."
+                    ? I18n.t("Version %1 is available. Deadband will download and verify the update before installing it.").replace("%1", updateManager.latestVersion)
+                    : I18n.t("Version %1 is available, but no compatible package was found for this installation.").replace("%1", updateManager.latestVersion)
                 wrapMode: Text.WordWrap
                 color: Theme.text
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
             }
             Text {
                 width: parent.width
-                text: updateManager.status
+                text: I18n.t(updateManager.status)
                 wrapMode: Text.WordWrap
                 color: Theme.textDim
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
@@ -205,15 +221,15 @@ Window {
                 width: parent.width
                 spacing: 8
                 PillButton {
-                    label: updateManager.busy ? "Updating…"
-                          : (updateManager.installationComplete ? "Update installed" : "Update now")
+                    label: updateManager.busy ? I18n.t("Updating…")
+                          : (updateManager.installationComplete ? I18n.t("Update installed") : I18n.t("Update now"))
                     highlight: true
                     enabled: updateManager.canInstall && !updateManager.busy
                              && !updateManager.installationComplete
                     onClicked: updateManager.installUpdate()
                 }
                 PillButton {
-                    label: "Later"
+                    label: I18n.t("Later")
                     enabled: !updateManager.busy
                     onClicked: {
                         win.updateNoticeDismissed = true
@@ -328,7 +344,7 @@ Window {
                         Text {
                             visible: bridge.demoMode
                             anchors.centerIn: parent
-                            text: "!"; color: "white"
+                            text: I18n.t("!"); color: "white"
                             font.bold: true; font.pixelSize: 16
                         }
                     }
@@ -378,7 +394,7 @@ Window {
                     id: g7Session
                     visible: win.activeDevice === "controller" && bridge.hasConfigSession
                     Layout.alignment: Qt.AlignVCenter
-                    label: bridge.configClaimed ? "Release to games" : "Configure controller"
+                    label: bridge.configClaimed ? I18n.t("Release to games") : I18n.t("Configure controller")
                     statusDot: bridge.configClaimed ? Theme.warn : "transparent"
                     onClicked: bridge.setConfigClaimed(!bridge.configClaimed)
                 }
@@ -406,14 +422,14 @@ Window {
                     visible: win.activeDevice === "mouse" && mouse.present
                              && mouse.selectedProfile > 0
                     enabled: !mouse.busy
-                    label: win.width < 1450 ? "✎" : "✎ Rename"
+                    label: win.width < 1450 ? "✎" : "✎ " + I18n.t("Rename")
                     onClicked: mouseProfiles.startRename()
                     HoverHandler { id: renameHover }
                     QQC.ToolTip {
                         parent: renameBtn
                         visible: renameHover.hovered
                         delay: 400
-                        text: "Rename " + win.selectedProfileLabel + ".\n" +
+                        text: I18n.t("Rename ") + win.selectedProfileLabel + ".\n" +
                               "Double-click a profile to switch the mouse to it."
                     }
                 }
@@ -427,7 +443,7 @@ Window {
                     visible: win.activeDevice === "mouse" && mouse.present
                              && mouse.resetSupported && mouse.selectedProfile > 0
                     enabled: !mouse.busy
-                    label: win.width < 1450 ? "↺" : "↺ Reset profile"
+                    label: win.width < 1450 ? "↺" : "↺ " + I18n.t("Reset profile")
                     confirmLabel: "Reset " + win.selectedProfileLabel + "?"
                     onConfirmed: mouse.resetProfile()
                     HoverHandler { id: mouseResetHover }
@@ -435,7 +451,7 @@ Window {
                         parent: mouseResetBtn
                         visible: mouseResetHover.hovered
                         delay: 400
-                        text: "Restores " + win.selectedProfileLabel + " to the mouse's\n" +
+                        text: I18n.t("Restores ") + win.selectedProfileLabel + " to the mouse's\n" +
                               "factory settings: buttons, G-Shift, DPI, rate and name.\n" +
                               "Your current settings are backed up first."
                     }
@@ -450,7 +466,7 @@ Window {
                     Layout.alignment: Qt.AlignVCenter
                     visible: bridge.profile > 0 && bridge.profileResetSupported
                              && win.activeDevice === "controller"
-                    label: win.width < 1320 ? "↺" : "↺ Reset profile"
+                    label: win.width < 1320 ? "↺" : "↺ " + I18n.t("Reset profile")
                     confirmLabel: "Reset Profile " + bridge.profile + "?"
                     onConfirmed: bridge.resetProfileToDefault()
                     HoverHandler { id: resetHover }
@@ -458,7 +474,7 @@ Window {
                         parent: resetBtn
                         visible: resetHover.hovered
                         delay: 400
-                        text: "Resets only the current profile (P" + bridge.profile +
+                        text: I18n.t("Resets only the current profile (P") + bridge.profile +
                               ") to defaults.\nReset all " + bridge.profileCount +
                               " in Settings → Backup & Restore."
                     }
@@ -475,13 +491,13 @@ Window {
                     spacing: 8
                     Text {
                         visible: win.width >= 1000   // hide label when narrow; help icon still explains
-                        text: "Sticks → cursor"; color: Theme.textDim
+                        text: I18n.t("Sticks → cursor"); color: Theme.textDim
                         font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     HelpIcon {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "Toggles KDE's Game Controller (KWin) plugin.\n\n" +
+                        text: I18n.t("Toggles KDE's Game Controller (KWin) plugin.\n\n") +
                               "On: the controller's sticks move your mouse pointer " +
                               "and the triggers click — handy from the couch.\n\n" +
                               "Off: the controller acts as a normal gamepad (games " +
@@ -518,7 +534,7 @@ Window {
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: mouse.present ? "Connected" : "Not connected"
+                        text: I18n.t(mouse.present ? "Connected" : "Not connected")
                         color: Theme.textDim
                         font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                     }
@@ -533,7 +549,7 @@ Window {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: mouse.present
-                        text: mouse.wireless ? "Wireless" : "Wired"
+                        text: I18n.t(mouse.wireless ? "Wireless" : "Wired")
                         color: Theme.textDim
                         font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                     }
@@ -552,7 +568,7 @@ Window {
                                         : (gearHov.hovered ? Theme.cardHover : "transparent")
                 Behavior on color { ColorAnimation { duration: 120 } }
                 Text {
-                    anchors.centerIn: parent; text: "⚙"; font.pixelSize: 18
+                    anchors.centerIn: parent; text: I18n.t("⚙"); font.pixelSize: 18
                     color: win.settingsOpen ? "white" : Theme.textDim
                 }
                 HoverHandler { id: gearHov }
@@ -573,7 +589,7 @@ Window {
                     delegate: NavTab {
                         required property int index
                         required property string modelData
-                        label: modelData
+                        label: I18n.t(modelData)
                         active: win.currentTab === index
                         onClicked: win.currentTab = index
                     }
@@ -593,7 +609,7 @@ Window {
                     id: pollDrop
                     visible: win.activeDevice === "controller" && bridge.pollRates.length > 0
                     anchors.verticalCenter: parent.verticalCenter
-                    label: "Poll rate"
+                    label: I18n.t("Poll rate")
                     model: bridge.pollRates
                     enabled: bridge.pollRateEditable
                     opacity: enabled ? 1 : 0.45
@@ -664,11 +680,11 @@ Window {
                 Row {
                     spacing: 8
                     PillButton {
-                        label: "Copy command" + (bridge.accessProblem === "backend" ? "" : "s")
+                        label: I18n.t("Copy command") + (bridge.accessProblem === "backend" ? "" : "s")
                         onClicked: bridge.copyText(accessCol.fixCmd)
                     }
                     PillButton {
-                        label: "Diagnostics…"
+                        label: I18n.t("Diagnostics…")
                         onClicked: { diagWin.show(); diagWin.raise(); bridge.runDiagnostics() }
                     }
                 }
@@ -731,11 +747,11 @@ Window {
                 Card {
                     anchors.centerIn: parent
                     width: 440
-                    title: "Lighting"
+                    title: I18n.t("Lighting")
                     Text {
                         width: parent.width
                         wrapMode: Text.WordWrap
-                        text: "This controller has no app-configurable lighting."
+                        text: I18n.t("This controller has no app-configurable lighting.")
                         color: Theme.textDim
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontM
@@ -754,11 +770,11 @@ Window {
                 Card {
                     anchors.centerIn: parent
                     width: 440
-                    title: "Macros"
+                    title: I18n.t("Macros")
                     Text {
                         width: parent.width
                         wrapMode: Text.WordWrap
-                        text: "This controller has no app-configurable macros."
+                        text: I18n.t("This controller has no app-configurable macros.")
                         color: Theme.textDim
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontM
@@ -778,11 +794,11 @@ Window {
                 Card {
                     anchors.centerIn: parent
                     width: 440
-                    title: "Motion"
+                    title: I18n.t("Motion")
                     Text {
                         width: parent.width
                         wrapMode: Text.WordWrap
-                        text: "This controller has no app-configurable motion / gyro."
+                        text: I18n.t("This controller has no app-configurable motion / gyro.")
                         color: Theme.textDim
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontM
@@ -822,7 +838,7 @@ Window {
                     }
                     PillButton {
                         visible: !g7ReleasedOverlay.claimInProgress
-                        label: g7ReleasedOverlay.claimFailed ? "Retry" : "Configure controller"
+                        label: g7ReleasedOverlay.claimFailed ? I18n.t("Retry") : I18n.t("Configure controller")
                         onClicked: bridge.setConfigClaimed(true)
                     }
                 }
@@ -873,7 +889,7 @@ Window {
                     Layout.fillWidth: true; implicitHeight: 26
                     Text {
                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                        text: "Settings"; color: Theme.text
+                        text: I18n.t("Settings"); color: Theme.text
                         font.family: Theme.fontFamily; font.pixelSize: Theme.fontL
                         font.weight: Font.DemiBold
                     }
@@ -881,7 +897,7 @@ Window {
                         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                         width: 26; height: 26; radius: 6
                         color: closeHov.hovered ? Theme.cardHover : "transparent"
-                        Text { anchors.centerIn: parent; text: "✕"; color: Theme.textDim; font.pixelSize: 14 }
+                        Text { anchors.centerIn: parent; text: I18n.t("✕"); color: Theme.textDim; font.pixelSize: 14 }
                         HoverHandler { id: closeHov }
                         TapHandler { onTapped: win.settingsOpen = false }
                     }
@@ -902,11 +918,32 @@ Window {
                         spacing: 16
 
                         // ------------------------------------------ Appearance
-                        SectionHeader { text: "Appearance" }
+                        SectionHeader { text: I18n.t("Appearance") }
                         Row {
                             width: parent.width; spacing: 8
                             Text {
-                                text: "Density"; color: Theme.textDim; width: 72
+                                text: I18n.t("Language"); color: Theme.textDim; width: 72
+                                anchors.verticalCenter: parent.verticalCenter
+                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
+                            }
+                            QQC.ComboBox {
+                                width: 220
+                                model: I18n.languages
+                                textRole: "name"
+                                currentIndex: {
+                                    for (var i = 0; i < I18n.languages.length; i++)
+                                        if (I18n.languages[i].code === I18n.language) return i
+                                    return 0
+                                }
+                                onActivated: function(index) {
+                                    win.setLanguage(I18n.languages[index].code)
+                                }
+                            }
+                        }
+                        Row {
+                            width: parent.width; spacing: 8
+                            Text {
+                                text: I18n.t("Density"); color: Theme.textDim; width: 72
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                             }
@@ -916,7 +953,7 @@ Window {
                                         ["Cozy", "cozy"]]
                                 delegate: PillButton {
                                     required property var modelData
-                                    label: modelData[0]
+                                    label: I18n.t(modelData[0])
                                     highlight: Theme.density === modelData[1]
                                     onClicked: win.setDensity(modelData[1])
                                 }
@@ -926,7 +963,7 @@ Window {
                         Divider {}
 
                         // ------------------------------------------ Demo mode
-                        SectionHeader { text: "Demo mode" }
+                        SectionHeader { text: I18n.t("Demo mode") }
                         Row {
                             width: parent.width; spacing: 12
                             ToggleSwitch {
@@ -938,7 +975,7 @@ Window {
                             Text {
                                 width: parent.width - 60; wrapMode: Text.WordWrap
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "Preview one of each supported controller in software, "
+                                text: I18n.t("Preview one of each supported controller in software, ")
                                     + "with no hardware connected — pick a model from the top-bar "
                                     + "selector. Ignores real controllers while on; turns off on restart."
                                 color: Theme.textDim; font.family: Theme.fontFamily
@@ -951,14 +988,14 @@ Window {
                         // ------------------------------------------ Theme colors
                         Item {
                             width: body.width; height: themeHdr.height
-                            SectionHeader { id: themeHdr; text: "Theme" }
+                            SectionHeader { id: themeHdr; text: I18n.t("Theme") }
                             PillButton {
                                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                label: "Reset colors"; onClicked: win.resetTheme()
+                                label: I18n.t("Reset colors"); onClicked: win.resetTheme()
                             }
                         }
                         Text {
-                            text: "Presets"; color: Theme.textDim; topPadding: 2
+                            text: I18n.t("Presets"); color: Theme.textDim; topPadding: 2
                             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         Flow {
@@ -973,7 +1010,7 @@ Window {
                             }
                         }
                         Text {
-                            text: "Custom colors"; color: Theme.textDim; topPadding: 4
+                            text: I18n.t("Custom colors"); color: Theme.textDim; topPadding: 4
                             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         Flow {
@@ -993,26 +1030,26 @@ Window {
                         Divider {}
 
                         // ------------------------------------------ Background
-                        SectionHeader { text: "Background" }
+                        SectionHeader { text: I18n.t("Background") }
                         Text {
                             width: parent.width; wrapMode: Text.WordWrap
-                            text: "Use a PNG, JPEG, animated GIF — or a WEBM/MP4 video (played "
+                            text: I18n.t("Use a PNG, JPEG, animated GIF — or a WEBM/MP4 video (played ")
                                 + "muted on loop) — behind the app. The dim slider keeps cards "
                                 + "and text readable over busy media."
                             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         Row {
                             width: parent.width; spacing: 8
-                            PillButton { label: "Choose…"; onClicked: bgDialog.open() }
+                            PillButton { label: I18n.t("Choose…"); onClicked: bgDialog.open() }
                             PillButton {
-                                label: "Clear"; visible: appearance.bgImage !== ""
+                                label: I18n.t("Clear"); visible: appearance.bgImage !== ""
                                 onClicked: appearance.bgImage = ""
                             }
                         }
                         Text {
                             visible: appearance.bgImage !== ""
                             width: parent.width; elide: Text.ElideMiddle
-                            text: "▸ " + decodeURIComponent(("" + appearance.bgImage).split('/').pop())
+                            text: I18n.t("▸ ") + decodeURIComponent(("" + appearance.bgImage).split('/').pop())
                             color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         // fill mode + dim (only meaningful once an image is set)
@@ -1020,7 +1057,7 @@ Window {
                             visible: appearance.bgImage !== ""
                             width: parent.width; spacing: 8
                             Text {
-                                text: "Fit"; color: Theme.textDim; width: 72
+                                text: I18n.t("Fit"); color: Theme.textDim; width: 72
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                             }
@@ -1029,7 +1066,7 @@ Window {
                                         ["Stretch", "stretch"], ["Tile", "tile"]]
                                 delegate: PillButton {
                                     required property var modelData
-                                    label: modelData[0]
+                                    label: I18n.t(modelData[0])
                                     highlight: appearance.bgFill === modelData[1]
                                     onClicked: appearance.bgFill = modelData[1]
                                 }
@@ -1039,7 +1076,7 @@ Window {
                             visible: appearance.bgImage !== ""
                             width: parent.width; spacing: 8
                             Text {
-                                text: "Dim"; color: Theme.textDim; width: 72
+                                text: I18n.t("Dim"); color: Theme.textDim; width: 72
                                 anchors.verticalCenter: parent.verticalCenter
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                             }
@@ -1061,10 +1098,10 @@ Window {
                         Divider {}
 
                         // ------------------------------------------ Backup & Restore
-                        SectionHeader { text: "Controllers" }
+                        SectionHeader { text: I18n.t("Controllers") }
                         Text {
                             width: parent.width; wrapMode: Text.WordWrap
-                            text: "Name each device so the picker shows \"Black\" instead of " +
+                            text: I18n.t("Name each device so the picker shows \"Black\" instead of ") +
                                   "\"Cyclone 2 #1\". Names are remembered per USB port — identical " +
                                   "models are indistinguishable to the computer, so moving a dongle " +
                                   "to another port leaves its name behind."
@@ -1076,7 +1113,7 @@ Window {
                             spacing: 8
                             Text {
                                 visible: bridge.controllers.length === 0
-                                text: "Nothing connected."
+                                text: I18n.t("Nothing connected.")
                                 color: Theme.textFaint
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                             }
@@ -1103,7 +1140,7 @@ Window {
                                         Text {
                                             // the port IS the key, so show it rather than
                                             // implying the name is bound to the hardware
-                                            text: "port " + modelData.port +
+                                            text: I18n.t("port ") + modelData.port +
                                                   (modelData.live ? "" : " — " + modelData.status)
                                             color: modelData.live ? Theme.textFaint : Theme.warn
                                             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS - 1
@@ -1113,7 +1150,7 @@ Window {
                                         anchors.verticalCenter: parent.verticalCenter
                                         width: 150
                                         text: win.nameFor(modelData.id)
-                                        placeholderText: "name…"
+                                        placeholderText: I18n.t("name…")
                                         color: Theme.text
                                         font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                                         background: Rectangle {
@@ -1127,28 +1164,28 @@ Window {
                         }
 
                         Divider { visible: !bridge.remapOnly }   // else two stack
-                        SectionHeader { visible: !bridge.remapOnly; text: "Backup & Restore" }
+                        SectionHeader { visible: !bridge.remapOnly; text: I18n.t("Backup & Restore") }
                         BackupPanel { visible: !bridge.remapOnly; width: parent.width }
 
 
                         Divider {}
 
                         // ------------------------------------------ Diagnostics
-                        SectionHeader { text: "Help & Diagnostics" }
+                        SectionHeader { text: I18n.t("Help & Diagnostics") }
                         Text {
                             width: parent.width; wrapMode: Text.WordWrap
-                            text: "Something not working? Diagnostics checks whether Deadband "
+                            text: I18n.t("Something not working? Diagnostics checks whether Deadband ")
                                 + "can actually open your devices and tells you how to fix it — "
                                 + "with a report you can paste into a GitHub issue."
                             color: Theme.textDim
                             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         PillButton {
-                            label: "🩺 Open diagnostics…"
+                            label: I18n.t("🩺 Open diagnostics…")
                             onClicked: { diagWin.show(); diagWin.raise() }
                         }
                         PillButton {
-                            label: updateManager.checking ? "Checking for updates…" : "Check for updates"
+                            label: I18n.t(updateManager.checking ? "Checking for updates…" : "Check for updates")
                             enabled: !updateManager.checking && !updateManager.busy
                             onClicked: {
                                 win.updateNoticeDismissed = false
@@ -1158,7 +1195,7 @@ Window {
                         Text {
                             visible: updateManager.status.length > 0
                             width: parent.width; wrapMode: Text.WordWrap
-                            text: updateManager.status
+                            text: I18n.t(updateManager.status)
                             color: Theme.textDim
                             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
@@ -1195,7 +1232,7 @@ Window {
         Text {
             id: toastText
             anchors.centerIn: parent
-            text: bridge.applyStatus
+            text: I18n.t(bridge.applyStatus)
             color: applyToast.busy ? Theme.textDim
                                    : (applyToast.ok ? Theme.ok : Theme.warn)
             font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
@@ -1240,7 +1277,7 @@ Window {
             id: mouseToastText
             anchors.centerIn: parent; width: parent.width - 24
             horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight
-            text: mouse.applyStatus
+            text: I18n.t(mouse.applyStatus)
             color: mouseToast.busy ? Theme.textDim
                                    : (mouseToast.ok ? Theme.ok : Theme.warn)
             font.family: Theme.fontFamily; font.pixelSize: Theme.fontM

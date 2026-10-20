@@ -16,7 +16,7 @@ Rectangle {
         id: actions
         anchors.right: parent.right; anchors.rightMargin: 14
         anchors.verticalCenter: parent.verticalCenter; spacing: 8
-        PillButton { label: "Discard"; enabled: !mouse.busy; onClicked: mouse.discard() }
+        PillButton { label: I18n.t("Discard"); enabled: !mouse.busy; onClicked: mouse.discard() }
         PillButton {
             label: mouse.busy ? "Applying…" : "Apply " + mouse.pendingCount
             highlight: !mouse.busy; enabled: !mouse.busy
@@ -46,7 +46,7 @@ Rectangle {
                     }
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "✕"; color: Theme.textDim; font.pixelSize: Theme.fontS
+                        text: I18n.t("✕"); color: Theme.textDim; font.pixelSize: Theme.fontS
                         TapHandler { enabled: !mouse.busy; onTapped: mouse.unstageItem(modelData.key) }
                     }
                 }

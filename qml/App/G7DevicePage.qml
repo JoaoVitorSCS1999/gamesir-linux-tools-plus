@@ -34,7 +34,7 @@ Item {
 
         Card {
             Layout.fillWidth: true
-            title: "G7 Pro configuration session"
+            title: I18n.t("G7 Pro configuration session")
             Text {
                 width: parent.width; wrapMode: Text.WordWrap
                 text: bridge.configStatus + (bridge.configClaimed
@@ -47,10 +47,10 @@ Item {
 
         Card {
             Layout.fillWidth: true
-            title: "Charging dock"
+            title: I18n.t("Charging dock")
             Row {
                 width: parent.width
-                Text { text: "Auto on / off"; color: Theme.text; font.family: Theme.fontFamily }
+                Text { text: I18n.t("Auto on / off"); color: Theme.text; font.family: Theme.fontFamily }
                 Item { width: parent.width - 150; height: 1 }
                 ToggleSwitch {
                     checked: page.autoOn
@@ -59,7 +59,7 @@ Item {
             }
             Row {
                 width: parent.width
-                Text { text: "Brightness"; color: Theme.textDim
+                Text { text: I18n.t("Brightness"); color: Theme.textDim
                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                 Item { width: parent.width - 110; height: 1 }
                 Text { text: dockBright.value + "%"; color: Theme.text

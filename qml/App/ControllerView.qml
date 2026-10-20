@@ -445,7 +445,7 @@ Item {
         width: root.width * root.lay.size.home; height: width
         Rectangle { anchors.fill: parent; radius: width / 2; color: "#F2F2F2"; border.color: "#121214"; border.width: Math.max(1, width * 0.08) }
         Rectangle { anchors.centerIn: parent; width: parent.width * 0.62; height: width; radius: width / 2; color: "#121214" }
-        Text { anchors.centerIn: parent; text: "G"; color: "#F2F2F2"; font.bold: true; font.pixelSize: parent.width * 0.4 }
+        Text { anchors.centerIn: parent; text: I18n.t("G"); color: "#F2F2F2"; font.bold: true; font.pixelSize: parent.width * 0.4 }
     }
     Rectangle {
         visible: root.isTar
@@ -583,7 +583,7 @@ Item {
     Text {
         visible: root.remapMode && root.highlightTarget === "Disabled"
                  && root.hasPos(root.highlightSource)
-        text: "⊘"; color: Theme.accent; font.bold: true
+        text: I18n.t("⊘"); color: Theme.accent; font.bold: true
         font.pixelSize: root.width * 0.07
         x: root.srcPt.x + root.width * 0.05; y: root.srcPt.y - root.height * 0.13
     }

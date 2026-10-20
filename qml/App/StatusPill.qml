@@ -39,7 +39,7 @@ Row {
     Text {
         visible: bridge.firmware.length > 0 && !parent.compact
         anchors.verticalCenter: parent.verticalCenter
-        text: "fw " + bridge.firmware
+        text: I18n.t("fw ") + bridge.firmware
               + (bridge.connectionKind.length ? " · " + bridge.connectionKind : "")
         color: bridge.onDongle ? Theme.warn : Theme.textFaint
         font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
@@ -57,7 +57,7 @@ Row {
             radius: 6; color: "#3A2A14"; border.color: Theme.warn; border.width: 1
             Text {
                 anchors.centerIn: parent
-                text: "⚠"
+                text: I18n.t("⚠")
                 color: Theme.warn
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
             }

@@ -11,7 +11,7 @@ import App 1.0
 // for pasting straight into a GitHub issue — so users never need a terminal.
 Window {
     id: win
-    title: "Deadband — Diagnostics"
+    title: I18n.t("Deadband — Diagnostics")
     width: 720; height: 560
     minimumWidth: 520; minimumHeight: 360
     color: Theme.bg
@@ -29,7 +29,7 @@ Window {
             width: parent.width; height: 34
             Text {
                 anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                text: "Device diagnostics"
+                text: I18n.t("Device diagnostics")
                 color: Theme.text; font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontL; font.weight: Font.DemiBold
             }
@@ -51,7 +51,7 @@ Window {
         }
         Text {
             width: parent.width; wrapMode: Text.WordWrap
-            text: "Checks whether Deadband can actually open your devices — and if not, "
+            text: I18n.t("Checks whether Deadband can actually open your devices — and if not, ")
                 + "why. Paste the report into a GitHub issue when asking for help."
             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
         }

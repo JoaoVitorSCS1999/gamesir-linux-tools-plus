@@ -61,7 +61,7 @@ Item {
         Text {
             anchors.top: parent.top; anchors.topMargin: 12
             anchors.right: parent.right; anchors.rightMargin: 14
-            text: "✕"; color: Theme.textDim; font.pixelSize: Theme.fontM
+            text: I18n.t("✕"); color: Theme.textDim; font.pixelSize: Theme.fontM
             TapHandler { onTapped: tp.mode = "" }
         }
 
@@ -178,7 +178,7 @@ Item {
                     topLeftRadius: (parent.width - 60) / 2
                     color: mouseItem.fill(0xc8)
                     border.color: Theme.cardBorder; border.width: 1
-                    Text { anchors.centerIn: parent; text: "L"; color: Theme.text
+                    Text { anchors.centerIn: parent; text: I18n.t("L"); color: Theme.text
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                     HoverHandler { onHoveredChanged: mouseItem.hov = hovered ? 0xc8 : -1 }
                     TapHandler { onTapped: tp.choose(0xc8) }
@@ -188,7 +188,7 @@ Item {
                     topRightRadius: (parent.width - 60) / 2
                     color: mouseItem.fill(0xca)
                     border.color: Theme.cardBorder; border.width: 1
-                    Text { anchors.centerIn: parent; text: "R"; color: Theme.text
+                    Text { anchors.centerIn: parent; text: I18n.t("R"); color: Theme.text
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                     HoverHandler { onHoveredChanged: mouseItem.hov = hovered ? 0xca : -1 }
                     TapHandler { onTapped: tp.choose(0xca) }
@@ -199,21 +199,21 @@ Item {
                     Rectangle {
                         width: 26; height: 20; radius: 6; color: mouseItem.fill(0xcd)
                         border.color: Theme.cardBorder; border.width: 1
-                        Text { anchors.centerIn: parent; text: "▲"; color: Theme.textDim; font.pixelSize: 10 }
+                        Text { anchors.centerIn: parent; text: I18n.t("▲"); color: Theme.textDim; font.pixelSize: 10 }
                         HoverHandler { onHoveredChanged: mouseItem.hov = hovered ? 0xcd : -1 }
                         TapHandler { onTapped: tp.choose(0xcd) }
                     }
                     Rectangle {
                         width: 26; height: 24; radius: 6; color: mouseItem.fill(0xc9)
                         border.color: Theme.cardBorder; border.width: 1
-                        Text { anchors.centerIn: parent; text: "M"; color: Theme.text; font.pixelSize: 10 }
+                        Text { anchors.centerIn: parent; text: I18n.t("M"); color: Theme.text; font.pixelSize: 10 }
                         HoverHandler { onHoveredChanged: mouseItem.hov = hovered ? 0xc9 : -1 }
                         TapHandler { onTapped: tp.choose(0xc9) }
                     }
                     Rectangle {
                         width: 26; height: 20; radius: 6; color: mouseItem.fill(0xce)
                         border.color: Theme.cardBorder; border.width: 1
-                        Text { anchors.centerIn: parent; text: "▼"; color: Theme.textDim; font.pixelSize: 10 }
+                        Text { anchors.centerIn: parent; text: I18n.t("▼"); color: Theme.textDim; font.pixelSize: 10 }
                         HoverHandler { onHoveredChanged: mouseItem.hov = hovered ? 0xce : -1 }
                         TapHandler { onTapped: tp.choose(0xce) }
                     }

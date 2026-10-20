@@ -98,10 +98,10 @@ Item {
                     Layout.fillWidth: true; Layout.preferredWidth: 1; spacing: 12
 
                     Card {
-                        title: "Controller Light"; Layout.fillWidth: true
+                        title: I18n.t("Controller Light"); Layout.fillWidth: true
                         Text {
                             width: parent.width; wrapMode: Text.WordWrap
-                            text: "Lighting is shared by all controller profiles (P1–P4): " +
+                            text: I18n.t("Lighting is shared by all controller profiles (P1–P4): ") +
                                   "switching profile doesn't change it."
                             color: Theme.textFaint; font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontS
@@ -121,7 +121,7 @@ Item {
                         }
                         Row {
                             width: parent.width
-                            Text { text: "Brightness"; color: Theme.textDim
+                            Text { text: I18n.t("Brightness"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Item { width: parent.width - 110; height: 1 }
                             Text { text: briSlider.value + "%"; color: Theme.text
@@ -134,7 +134,7 @@ Item {
                     }
 
                     Card {
-                        title: "Home Indicator"; Layout.fillWidth: true
+                        title: I18n.t("Home Indicator"); Layout.fillWidth: true
                         Row {
                             width: parent.width; spacing: 14
                             // ring preview doubles as the quadrant selector: click a
@@ -231,7 +231,7 @@ Item {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     width: 104; horizontalAlignment: Text.AlignHCenter
                                     wrapMode: Text.WordWrap
-                                    text: "Click wedges to select — pick several to edit together"
+                                    text: I18n.t("Click wedges to select — pick several to edit together")
                                     color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS - 1
                                 }
                             }
@@ -248,7 +248,7 @@ Item {
                     // Puts the whole ring back to the factory baseline (all four
                     // quadrants yellow). Destructive, so it confirms first.
                     ConfirmButton {
-                        label: "Restore default lighting"
+                        label: I18n.t("Restore default lighting")
                         confirmLabel: "Restore default lighting?"
                         onConfirmed: bridge.restoreLighting()
                     }
@@ -263,16 +263,16 @@ Item {
                     Layout.fillWidth: true; Layout.preferredWidth: 1; spacing: 12
 
                     Card {
-                        title: "Power"; Layout.fillWidth: true
+                        title: I18n.t("Power"); Layout.fillWidth: true
                         Row {
                             width: parent.width
-                            Text { text: "Auto power on/off"; color: Theme.text
+                            Text { text: I18n.t("Auto power on/off"); color: Theme.text
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                                    anchors.verticalCenter: parent.verticalCenter }
                             Item { width: parent.width - 190; height: 1 }
                             ToggleSwitch { id: autoSw; onToggled: bridge.setLight8kAuto(autoSw.checked) }
                         }
-                        Text { text: "Sleep timer"; color: Theme.textDim
+                        Text { text: I18n.t("Sleep timer"); color: Theme.textDim
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         Flow {
                             width: parent.width; spacing: 8
@@ -290,7 +290,7 @@ Item {
                     }
 
                     Card {
-                        title: "Dock LED"; Layout.fillWidth: true
+                        title: I18n.t("Dock LED"); Layout.fillWidth: true
                         Flow {
                             width: parent.width; spacing: 8
                             Repeater {
@@ -306,7 +306,7 @@ Item {
                         }
                         Row {
                             width: parent.width
-                            Text { text: "Brightness"; color: Theme.textDim
+                            Text { text: I18n.t("Brightness"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Item { width: parent.width - 110; height: 1 }
                             Text { text: dockBri.value + "%"; color: Theme.text

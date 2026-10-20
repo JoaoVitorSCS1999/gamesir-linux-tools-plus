@@ -5,7 +5,7 @@ import App 1.0
 Card {
     id: sensors
     objectName: "motionSensors"
-    title: "Live Sensors"
+    title: I18n.t("Live Sensors")
     readonly property var readings: bridge.motionSensors
     readonly property bool streaming: readings.available === true
     headerValue: streaming ? "Streaming · raw counts" : "No live data"

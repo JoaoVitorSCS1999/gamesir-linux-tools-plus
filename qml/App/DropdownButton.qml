@@ -8,9 +8,9 @@ import App 1.0
 // so the two dropdowns in the top bars read as one family.
 Item {
     id: root
-    property string label: ""
+    property string label: I18n.t("")
     property var model: []               // list of display strings
-    property string placeholderText: "—"
+    property string placeholderText: I18n.t("—")
     property int currentIndex: 0
     signal activated(int index)
 

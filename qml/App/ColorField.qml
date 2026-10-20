@@ -11,7 +11,7 @@ import App 1.0
 // preset/reset that changes the source flows straight back into the swatch.
 Item {
     id: field
-    property string label: ""
+    property string label: I18n.t("")
     property color value: "#000000"
     signal picked(color c)
 

@@ -33,10 +33,10 @@ Item {
             Card {
                 visible: !bridge.profile
                 width: parent.width
-                title: "No profile selected"
+                title: I18n.t("No profile selected")
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
-                    text: "Pick a profile (1–4) in the top bar to read and edit its settings."
+                    text: I18n.t("Pick a profile (1–4) in the top bar to read and edit its settings.")
                     color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                 }
             }

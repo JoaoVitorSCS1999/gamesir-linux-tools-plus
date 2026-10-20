@@ -12,7 +12,7 @@ Rectangle {
     Text {
         anchors.left: parent.left; anchors.leftMargin: 14
         anchors.verticalCenter: parent.verticalCenter
-        text: bridge.pendingCount + " unsaved change" + (bridge.pendingCount === 1 ? "" : "s")
+        text: I18n.pending(bridge.pendingCount)
         color: Theme.warn
         font.family: Theme.fontFamily; font.pixelSize: Theme.fontM; font.weight: Font.DemiBold
     }
@@ -26,7 +26,7 @@ Rectangle {
             width: dl.implicitWidth + 24; height: 30; radius: 7
             color: dh.hovered ? Theme.cardHover : "transparent"
             border.color: Theme.cardBorder; border.width: 1
-            Text { id: dl; anchors.centerIn: parent; text: "Discard"
+            Text { id: dl; anchors.centerIn: parent; text: I18n.t("Discard")
                    color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontM }
             HoverHandler { id: dh }
             TapHandler { onTapped: bridge.discardConfig() }

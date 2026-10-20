@@ -3,7 +3,7 @@ import QtQuick
 // A top-nav item: icon glyph + label, with an animated active pill behind it.
 Item {
     id: root
-    property string label: ""
+    property string label: I18n.t("")
     property bool active: false
     signal clicked()
 
@@ -23,7 +23,7 @@ Item {
         anchors.centerIn: parent
         spacing: 7
         Text {
-            text: root.label
+            text: I18n.t(root.label)
             anchors.verticalCenter: parent.verticalCenter
             color: root.active ? Theme.textOnAccent : Theme.textDim
             font.family: Theme.fontFamily

@@ -4,7 +4,7 @@ import QtQuick
 // First click arms it (swaps to Confirm / Cancel); Confirm emits confirmed().
 Item {
     id: cb
-    property string label: ""
+    property string label: I18n.t("")
     property string confirmLabel: "Confirm"
     property bool arming: false
     signal confirmed()
@@ -29,7 +29,7 @@ Item {
             onClicked: { cb.arming = false; cb.confirmed() }
         }
         PillButton {
-            label: "Cancel"
+            label: I18n.t("Cancel")
             onClicked: cb.arming = false
         }
     }

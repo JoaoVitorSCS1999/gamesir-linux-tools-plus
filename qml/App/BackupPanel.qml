@@ -23,7 +23,7 @@ Column {
 
     Text {
         width: parent.width; wrapMode: Text.WordWrap
-        text: "Snapshot every profile + lighting to a file, or write a saved " +
+        text: I18n.t("Snapshot every profile + lighting to a file, or write a saved ") +
               "snapshot back. Restoring overwrites the controller."
         color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
     }
@@ -31,7 +31,7 @@ Column {
     Row {
         spacing: 8
         PillButton {
-            label: "Back up to file…"
+            label: I18n.t("Back up to file…")
             highlight: true
             opacity: bridge.backupBusy ? 0.5 : 1
             onClicked: if (!bridge.backupBusy) {
@@ -41,7 +41,7 @@ Column {
             }
         }
         PillButton {
-            label: "Restore from file…"
+            label: I18n.t("Restore from file…")
             opacity: bridge.backupBusy ? 0.5 : 1
             onClicked: if (!bridge.backupBusy) openDlg.open()
         }
@@ -53,7 +53,7 @@ Column {
         visible: bridge.profileResetSupported
         enabled: !bridge.backupBusy
         opacity: enabled ? 1 : 0.5
-        label: "Reset all profiles to defaults"
+        label: I18n.t("Reset all profiles to defaults")
         confirmLabel: "Reset ALL " + bridge.profileCount + " profiles?"
         onConfirmed: bridge.resetAllProfiles()
     }
@@ -69,7 +69,7 @@ Column {
     }
     Text {
         visible: bridge.backupBusy
-        text: "Working… " + panel.progDone + " / " + panel.progTotal + " blocks"
+        text: I18n.t("Working… ") + panel.progDone + " / " + panel.progTotal + " blocks"
         color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
     }
     Text {
@@ -83,7 +83,7 @@ Column {
     FileDialog {
         id: saveDlg
         fileMode: FileDialog.SaveFile
-        title: "Save controller backup"
+        title: I18n.t("Save controller backup")
         nameFilters: ["JSON files (*.json)"]
         defaultSuffix: "json"
         currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
@@ -92,7 +92,7 @@ Column {
     FileDialog {
         id: openDlg
         fileMode: FileDialog.OpenFile
-        title: "Restore controller backup"
+        title: I18n.t("Restore controller backup")
         nameFilters: ["JSON files (*.json)"]
         onAccepted: bridge.importBackup(selectedFile)
     }

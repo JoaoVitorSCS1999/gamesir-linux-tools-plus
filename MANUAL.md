@@ -17,6 +17,10 @@ the app's architecture, and reverse-engineering findings, see
 ## Using the app
 
 Launch it from your app menu as **Deadband**, or run `deadband` from a terminal.
+The interface follows a supported system language on first launch; change it later
+in **Settings → Appearance → Language**. Available languages are Brazilian
+Portuguese, Japanese, Spanish, Russian, Simplified Chinese, Korean, Hindi, German,
+and Polish, with English as the fallback.
 Everything below assumes the controller is connected and in **Xbox / XInput
 mode**. A G7 Pro at `3537:100a` is transitioned automatically to wired `3537:109b`
 or dongle `3537:109c`. If it shows `3537:1022`, hold **SHARE + MENU (☰)** together (note this

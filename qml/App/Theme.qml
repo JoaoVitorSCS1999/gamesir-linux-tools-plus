@@ -26,7 +26,7 @@ QtObject {
         button:     "#20232B",
         track:      "#2C2F38",
         ringSelect: "#FFFFFF",
-        text:       "#F2F3F5",
+        text: "#F2F3F5",
         textDim:    "#9AA0AC"
     })
 
@@ -86,17 +86,17 @@ QtObject {
 
     // Ordered list of themeable tokens for the Settings UI (key + label).
     readonly property var themeKeys: [
-        { key: "accent",     label: "Accent" },
-        { key: "bg",         label: "Background" },
-        { key: "bgGlow",     label: "Corner glow" },
-        { key: "navBar",     label: "Top bar" },
-        { key: "card",       label: "Card" },
-        { key: "cardBorder", label: "Card border" },
-        { key: "button",     label: "Button" },
-        { key: "track",      label: "Slider" },
-        { key: "ringSelect", label: "Selection glow" },
-        { key: "text",       label: "Text" },
-        { key: "textDim",    label: "Dim text" }
+        { key: "accent",     label: I18n.t("Accent") },
+        { key: "bg",         label: I18n.t("Background") },
+        { key: "bgGlow",     label: I18n.t("Corner glow") },
+        { key: "navBar",     label: I18n.t("Top bar") },
+        { key: "card",       label: I18n.t("Card") },
+        { key: "cardBorder", label: I18n.t("Card border") },
+        { key: "button",     label: I18n.t("Button") },
+        { key: "track",      label: I18n.t("Slider") },
+        { key: "ringSelect", label: I18n.t("Selection glow") },
+        { key: "text",       label: I18n.t("Text") },
+        { key: "textDim",    label: I18n.t("Dim text") }
     ]
 
     // Named preset palettes. Any key omitted falls back to _def, so a preset can

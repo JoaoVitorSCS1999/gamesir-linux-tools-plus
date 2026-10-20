@@ -123,7 +123,7 @@ Item {
 
     // ---- small reusable button --------------------------------------------
     component TextButton: Rectangle {
-        property string label: ""
+        property string label: I18n.t("")
         property bool highlight: false
         signal clicked()
         implicitWidth: bt.implicitWidth + 22; implicitHeight: 30; radius: 7
@@ -163,7 +163,7 @@ Item {
             spacing: 16
 
             Card {
-                title: "Lighting Profile"; Layout.fillWidth: true
+                title: I18n.t("Lighting Profile"); Layout.fillWidth: true
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
                     // Two separate sets of "profiles" are easy to mix up: say so.
@@ -183,7 +183,7 @@ Item {
                         model: 4
                         delegate: TextButton {
                             required property int index
-                            label: "" + (index + 1)
+                            label: I18n.t("") + (index + 1)
                             implicitWidth: 44
                             highlight: bridge.ledSlot === index
                             // read-only indicator where the pad owns the selection
@@ -194,7 +194,7 @@ Item {
             }
 
             Card {
-                title: "Presets"; Layout.fillWidth: true
+                title: I18n.t("Presets"); Layout.fillWidth: true
                 Flow {
                     width: parent.width; spacing: 8
                     Repeater {
@@ -206,22 +206,22 @@ Item {
                             onClicked: bridge.applyPreset(modelData)
                         }
                     }
-                    TextButton { label: "Off"; highlight: bridge.currentPreset === "Off"
+                    TextButton { label: I18n.t("Off"); highlight: bridge.currentPreset === "Off"
                                  onClicked: bridge.lightsOff() }
                 }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
                     visible: bridge.currentPreset === ""
-                    text: "Showing custom colours. Pick a preset to replace them."
+                    text: I18n.t("Showing custom colours. Pick a preset to replace them.")
                     color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
             }
 
             Card {
-                title: "Brightness & Speed"; Layout.fillWidth: true
+                title: I18n.t("Brightness & Speed"); Layout.fillWidth: true
                 Row {
                     width: parent.width
-                    Text { text: "Brightness"; color: Theme.textDim
+                    Text { text: I18n.t("Brightness"); color: Theme.textDim
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                     Item { width: parent.width - briLbl.width - 70; height: 1 }
                     Text { id: briLbl; text: bridge.brightness + "%"; color: Theme.text
@@ -234,7 +234,7 @@ Item {
                 }
                 Row {
                     width: parent.width
-                    Text { text: "Speed"; color: Theme.textDim
+                    Text { text: I18n.t("Speed"); color: Theme.textDim
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                     Item { width: parent.width - spdLbl.width - 42; height: 1 }
                     Text { id: spdLbl; text: bridge.speed + ""; color: Theme.text
@@ -248,14 +248,14 @@ Item {
             }
 
             Card {
-                title: "Power"; Layout.fillWidth: true
+                title: I18n.t("Power"); Layout.fillWidth: true
                 visible: bridge.lightingPowerSupported
                 // Lives on the left normally; reparents into the centre column's
                 // slack (under the controller) when the viewport is short.
                 parent: page.compact ? centerColumn : leftCol
                 Row {
                     width: parent.width
-                    Text { text: "Audio reactive"; color: Theme.text
+                    Text { text: I18n.t("Audio reactive"); color: Theme.text
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                            anchors.verticalCenter: parent.verticalCenter }
                     Item { width: parent.width - 130 - audioSw.width; height: 1 }
@@ -263,20 +263,20 @@ Item {
                 }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
-                    text: "Experimental — arms the device flag, but live reactivity " +
+                    text: I18n.t("Experimental — arms the device flag, but live reactivity ") +
                           "needs the host to stream audio (not yet implemented)."
                     color: Theme.textFaint
                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 Row {
                     width: parent.width
-                    Text { text: "Pick-up to wake"; color: Theme.text
+                    Text { text: I18n.t("Pick-up to wake"); color: Theme.text
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                            anchors.verticalCenter: parent.verticalCenter }
                     Item { width: parent.width - 130 - wakeSw.width; height: 1 }
                     ToggleSwitch { id: wakeSw; onToggled: bridge.setPickupWake(wakeSw.checked) }
                 }
-                Text { text: "Sleep timer"; color: Theme.textDim
+                Text { text: I18n.t("Sleep timer"); color: Theme.textDim
                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                 Flow {
                     width: parent.width; spacing: 6
@@ -364,14 +364,14 @@ Item {
                         }
                     }
                     TextButton {
-                        label: "Select all"
+                        label: I18n.t("Select all")
                         highlight: page.sel.length === page.nZones
                         onClicked: page.selectAllZones()
                     }
                 }
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "Click a zone to select it; Ctrl-click to add or remove zones"
+                    text: I18n.t("Click a zone to select it; Ctrl-click to add or remove zones")
                     color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
             }
@@ -386,7 +386,7 @@ Item {
             spacing: 16
 
             Card {
-                title: "Color — " + page.sel.map(function (i) { return bridge.lightNames[i] || "" }).join(", "); Layout.fillWidth: true
+                title: I18n.t("Color — ") + page.sel.map(function (i) { return bridge.lightNames[i] || "" }).join(", "); Layout.fillWidth: true
                 ColorPicker {
                     id: picker; width: parent.width
                     onEdited: page.onZoneEdited(c)
@@ -394,24 +394,24 @@ Item {
             }
 
             Card {
-                title: "Keyframes"; Layout.fillWidth: true
+                title: I18n.t("Keyframes"); Layout.fillWidth: true
                 Flow {
                     width: parent.width; spacing: 6
                     Repeater {
                         model: page.frames.length
                         delegate: TextButton {
                             required property int index
-                            label: "" + (index + 1)
+                            label: I18n.t("") + (index + 1)
                             implicitWidth: 32
                             highlight: page.curFrame === index
                             onClicked: { page.curFrame = index; page.loadFrame(index) }
                         }
                     }
-                    TextButton { label: "+"; implicitWidth: 32
+                    TextButton { label: I18n.t("+"); implicitWidth: 32
                                  enabled: page.frames.length < 8
                                  opacity: page.frames.length < 8 ? 1 : 0.4
                                  onClicked: page.addFrame() }
-                    TextButton { label: "−"; implicitWidth: 32
+                    TextButton { label: I18n.t("−"); implicitWidth: 32
                                  enabled: page.frames.length > 1
                                  opacity: page.frames.length > 1 ? 1 : 0.4
                                  onClicked: page.removeFrame() }
@@ -424,7 +424,7 @@ Item {
                 }
                 Row {
                     width: parent.width; spacing: 8
-                    TextButton { label: "Randomize"; onClicked: page.randomizeFrame() }
+                    TextButton { label: I18n.t("Randomize"); onClicked: page.randomizeFrame() }
                     TextButton { label: page.playing ? "Pause" : "Play"
                                  visible: bridge.lightingPlaybackSupported
                                  onClicked: page.togglePlay() }
@@ -434,7 +434,7 @@ Item {
             // Rewrites the keyframe records from the factory baseline. Destructive,
             // so it confirms first.
             ConfirmButton {
-                label: "Restore default lighting"
+                label: I18n.t("Restore default lighting")
                 confirmLabel: "Restore default lighting?"
                 visible: bridge.lightingRestorable
                 onConfirmed: bridge.restoreLighting()

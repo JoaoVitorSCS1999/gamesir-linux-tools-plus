@@ -1,5 +1,6 @@
 module App
 singleton Theme 1.0 Theme.qml
+singleton I18n 1.0 I18n.qml
 Card 1.0 Card.qml
 NavTab 1.0 NavTab.qml
 ProfileBar 1.0 ProfileBar.qml

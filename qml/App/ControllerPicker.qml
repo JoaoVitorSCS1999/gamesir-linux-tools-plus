@@ -64,7 +64,7 @@ Item {
             Text {
                 visible: root.mouseActive
                 anchors.verticalCenter: parent.verticalCenter
-                text: "🖱"; font.pixelSize: 14; color: Theme.accent
+                text: I18n.t("🖱"); font.pixelSize: 14; color: Theme.accent
             }
             ConnIcon {
                 visible: !root.mouseActive
@@ -137,7 +137,7 @@ Item {
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !modelData.live
-                            text: "— " + modelData.status
+                            text: I18n.t("— ") + modelData.status
                             color: parent.parent.sel ? Theme.textOnAccent : Theme.warn
                             opacity: parent.parent.sel ? 0.9 : 1
                             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
@@ -162,7 +162,7 @@ Item {
                     spacing: 8
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "🖱"; font.pixelSize: 14
+                        text: I18n.t("🖱"); font.pixelSize: 14
                         color: parent.parent.sel ? Theme.textOnAccent : Theme.accent
                     }
                     Text {

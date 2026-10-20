@@ -36,9 +36,9 @@ Item {
         anchors.top: parent.top; anchors.topMargin: 14
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: 8
-        PillButton { label: "Default"; highlight: page.editLayer === "default"
+        PillButton { label: I18n.t("Default"); highlight: page.editLayer === "default"
                      onClicked: page.editLayer = "default" }
-        PillButton { label: "G-Shift"; highlight: page.editLayer === "gshift"
+        PillButton { label: I18n.t("G-Shift"); highlight: page.editLayer === "gshift"
                      onClicked: page.editLayer = "gshift" }
     }
 
@@ -52,7 +52,7 @@ Item {
 
         // -------- LEFT: button list --------
         Card {
-            title: "Buttons"
+            title: I18n.t("Buttons")
             Layout.preferredWidth: 270; Layout.minimumWidth: 230; Layout.fillHeight: true
             Column {
                 width: parent.width; spacing: 5
@@ -111,18 +111,18 @@ Item {
 
                 Flow {
                     width: parent.width; spacing: 6
-                    PillButton { label: "Disabled";  onClicked: page.stage("disabled") }
-                    PillButton { label: "Sniper";    onClicked: page.stage("sniper") }
+                    PillButton { label: I18n.t("Disabled");  onClicked: page.stage("disabled") }
+                    PillButton { label: I18n.t("Sniper");    onClicked: page.stage("sniper") }
                     PillButton {
-                        label: "G-Shift"; visible: page.editLayer === "default"
+                        label: I18n.t("G-Shift"); visible: page.editLayer === "default"
                         onClicked: page.stage("gshift-hold")     // makes this button the G-Shift trigger
                     }
-                    PillButton { label: "DPI +";     onClicked: page.stage("dpi-up") }
-                    PillButton { label: "DPI −";     onClicked: page.stage("dpi-down") }
-                    PillButton { label: "DPI cycle"; onClicked: page.stage("dpi-cycle") }
+                    PillButton { label: I18n.t("DPI +");     onClicked: page.stage("dpi-up") }
+                    PillButton { label: I18n.t("DPI −");     onClicked: page.stage("dpi-down") }
+                    PillButton { label: I18n.t("DPI cycle"); onClicked: page.stage("dpi-cycle") }
                 }
                 Text {
-                    width: parent.width; text: "Mouse buttons"; color: Theme.textDim
+                    width: parent.width; text: I18n.t("Mouse buttons"); color: Theme.textDim
                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 Flow {
@@ -131,22 +131,22 @@ Item {
                         model: 5
                         delegate: PillButton {
                             required property int index
-                            label: "M" + (index + 1)
+                            label: I18n.t("M") + (index + 1)
                             onClicked: page.stage("mouse:" + (index + 1))
                         }
                     }
                 }
                 Text {
-                    width: parent.width; text: "Keyboard"; color: Theme.textDim
+                    width: parent.width; text: I18n.t("Keyboard"); color: Theme.textDim
                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 PillButton {
-                    label: "⌨  Choose a key…"
+                    label: I18n.t("⌨  Choose a key…")
                     onClicked: keyPicker.active = true
                 }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap; topPadding: 2
-                    text: "For a multi-step macro, use the Macros tab."
+                    text: I18n.t("For a multi-step macro, use the Macros tab.")
                     color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 Text {

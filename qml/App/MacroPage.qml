@@ -142,7 +142,7 @@ Item {
                     }
                 }
                 Item { Layout.fillWidth: true }
-                Text { text: "Macro"; color: Theme.textDim
+                Text { text: I18n.t("Macro"); color: Theme.textDim
                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                        Layout.alignment: Qt.AlignVCenter }
                 ToggleSwitch {
@@ -157,7 +157,7 @@ Item {
             // block), so say so rather than let the other tabs' habit mislead.
             Text {
                 width: parent.width; wrapMode: Text.WordWrap
-                text: "Macros are saved to the controller as you edit them; there's no Save step on this tab."
+                text: I18n.t("Macros are saved to the controller as you edit them; there's no Save step on this tab.")
                 color: Theme.textDim
                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
             }
@@ -171,7 +171,7 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.preferredWidth: 1; spacing: 12
                     Card {
-                        title: "Sequence"
+                        title: I18n.t("Sequence")
                         headerValue: page.events.length + " / " + bridge.macroMax + " steps"
                         Layout.fillWidth: true
                         ListView {
@@ -219,7 +219,7 @@ Item {
                                 Text {
                                     anchors.right: parent.right; anchors.rightMargin: 10
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: "✕"; color: Theme.textDim
+                                    text: I18n.t("✕"); color: Theme.textDim
                                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                                     TapHandler { onTapped: page.removeEvent(index) }
                                 }
@@ -228,11 +228,11 @@ Item {
                         }
                         Text {
                             visible: page.events.length === 0
-                            text: "No events yet — add one to start the sequence."
+                            text: I18n.t("No events yet — add one to start the sequence.")
                             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         PillButton {
-                            label: "+ Add event"
+                            label: I18n.t("+ Add event")
                             enabled: page.events.length < bridge.macroMax
                             onClicked: page.addEvent()
                         }
@@ -250,7 +250,7 @@ Item {
                         title: page.sel >= 0 ? "Step " + (page.sel + 1) : "Step"
                         Layout.fillWidth: true
                         visible: page.sel >= 0 && page.sel < page.events.length
-                        Text { text: "Button"; color: Theme.textDim
+                        Text { text: I18n.t("Button"); color: Theme.textDim
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         // macros are controller-buttons only (the firmware's macro
                         // player doesn't emit keyboard/mouse — those are Rebinds).
@@ -268,7 +268,7 @@ Item {
                         }
                         Row {
                             width: parent.width; topPadding: 6; spacing: 10
-                            Text { text: "Hold"; color: Theme.textDim; width: 84
+                            Text { text: I18n.t("Hold"); color: Theme.textDim; width: 84
                                    anchors.verticalCenter: parent.verticalCenter
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             AccentSlider {
@@ -285,7 +285,7 @@ Item {
                         }
                         Row {
                             width: parent.width; topPadding: 2; spacing: 10
-                            Text { text: "Delay after"; color: Theme.textDim; width: 84
+                            Text { text: I18n.t("Delay after"); color: Theme.textDim; width: 84
                                    anchors.verticalCenter: parent.verticalCenter
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             AccentSlider {
@@ -301,22 +301,22 @@ Item {
                             }
                         }
 
-                        Text { text: "Step tools"; color: Theme.textDim; topPadding: 6
+                        Text { text: I18n.t("Step tools"); color: Theme.textDim; topPadding: 6
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         Flow {
                             width: parent.width; spacing: 6
-                            PillButton { label: "Duplicate"; enabled: page.events.length < bridge.macroMax
+                            PillButton { label: I18n.t("Duplicate"); enabled: page.events.length < bridge.macroMax
                                          onClicked: page.duplicate(1) }
-                            PillButton { label: "Copy"; onClicked: page.copyStep() }
-                            PillButton { label: "Paste"; enabled: page.clip !== null && page.events.length < bridge.macroMax
+                            PillButton { label: I18n.t("Copy"); onClicked: page.copyStep() }
+                            PillButton { label: I18n.t("Paste"); enabled: page.clip !== null && page.events.length < bridge.macroMax
                                          onClicked: page.pasteStep() }
-                            PillButton { label: "Move ▲"; enabled: page.sel > 0; onClicked: page.move(-1) }
-                            PillButton { label: "Move ▼"; enabled: page.sel >= 0 && page.sel < page.events.length - 1
+                            PillButton { label: I18n.t("Move ▲"); enabled: page.sel > 0; onClicked: page.move(-1) }
+                            PillButton { label: I18n.t("Move ▼"); enabled: page.sel >= 0 && page.sel < page.events.length - 1
                                          onClicked: page.move(1) }
                         }
                         Row {
                             width: parent.width; spacing: 8; topPadding: 2
-                            Text { text: "Duplicate ×"; color: Theme.textDim
+                            Text { text: I18n.t("Duplicate ×"); color: Theme.textDim
                                    anchors.verticalCenter: parent.verticalCenter
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             NumField {
@@ -325,7 +325,7 @@ Item {
                                 onCommitted: function (v) { page.dupN = Math.max(1, v) }
                             }
                             PillButton {
-                                label: "Go"; enabled: page.events.length < bridge.macroMax
+                                label: I18n.t("Go"); enabled: page.events.length < bridge.macroMax
                                 onClicked: page.duplicate(page.dupN)
                             }
                         }

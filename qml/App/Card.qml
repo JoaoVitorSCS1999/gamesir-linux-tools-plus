@@ -5,7 +5,7 @@ import QtQuick
 // inner column.
 Rectangle {
     id: root
-    property string title: ""
+    property string title: I18n.t("")
     property string headerValue: ""      // optional right-aligned value in the header
     property Component headerRight: null // optional control placed at the header's right
     property alias content: body.data

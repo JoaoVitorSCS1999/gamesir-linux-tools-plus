@@ -52,10 +52,10 @@ Item {
             visible: !bridge.profile
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 460
-            title: "No profile selected"
+            title: I18n.t("No profile selected")
             Text {
                 width: parent.width; wrapMode: Text.WordWrap
-                text: "Pick a profile (1–4) in the top bar to read and edit its settings."
+                text: I18n.t("Pick a profile (1–4) in the top bar to read and edit its settings.")
                 color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
             }
         }
@@ -68,10 +68,10 @@ Item {
             spacing: 16
 
             Card {
-                title: "Vibration strength"; Layout.fillWidth: true
+                title: I18n.t("Vibration strength"); Layout.fillWidth: true
                 Row {
                     width: parent.width
-                    Text { text: "Left"; color: Theme.textDim
+                    Text { text: I18n.t("Left"); color: Theme.textDim
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                     Item { width: parent.width - 70; height: 1 }
                     Text { text: vibL.value + "%"; color: Theme.text
@@ -83,14 +83,14 @@ Item {
                 }
                 PillButton {
                     objectName: "testLeftGrip"
-                    label: "Test left grip (heavy motor)"
+                    label: I18n.t("Test left grip (heavy motor)")
                     enabled: !page.testRunning && vibL.value > 0
                              && (!bridge.isG7Pro || bridge.configClaimed)
                     onClicked: page.testMotor("left", vibL.value)
                 }
                 Row {
                     width: parent.width
-                    Text { text: "Right"; color: Theme.textDim
+                    Text { text: I18n.t("Right"); color: Theme.textDim
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                     Item { width: parent.width - 70; height: 1 }
                     Text { text: vibR.value + "%"; color: Theme.text
@@ -102,7 +102,7 @@ Item {
                 }
                 PillButton {
                     objectName: "testRightGrip"
-                    label: "Test right grip (light motor)"
+                    label: I18n.t("Test right grip (light motor)")
                     enabled: !page.testRunning && vibR.value > 0
                              && (!bridge.isG7Pro || bridge.configClaimed)
                     onClicked: page.testMotor("right", vibR.value)
@@ -113,11 +113,11 @@ Item {
                 // the missing "big right" and "small left".
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
-                    text: "Each grip has one motor: a heavy one on the left and a light one on the right."
+                    text: I18n.t("Each grip has one motor: a heavy one on the left and a light one on the right.")
                     color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 PillButton {
-                    label: "Test both grip motors"
+                    label: I18n.t("Test both grip motors")
                     enabled: !page.testRunning && (!bridge.isG7Pro || bridge.configClaimed)
                     onClicked: {
                         page.testError = ""; page.testRunning = true
@@ -127,13 +127,13 @@ Item {
             }
 
             Card {
-                visible: bridge.isG7Pro; title: "Trigger motors"; Layout.fillWidth: true
+                visible: bridge.isG7Pro; title: I18n.t("Trigger motors"); Layout.fillWidth: true
                 // GameSir doesn't document what Force and Sync do, so say only what
                 // was observed: with Force on, a trigger's test stays silent
                 // (Amazon edition, 2026-10-06) -- it read as a broken test.
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
-                    text: "A trigger's test can stay silent while its Force option is on."
+                    text: I18n.t("A trigger's test can stay silent while its Force option is on.")
                     color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 // Sliders, like the grip motors above and every other controller's
@@ -143,7 +143,7 @@ Item {
                     width: parent.width; spacing: 6
                     Row {
                         width: parent.width
-                        Text { text: "Left trigger"; color: Theme.textDim
+                        Text { text: I18n.t("Left trigger"); color: Theme.textDim
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         Item { width: parent.width - 130; height: 1 }
                         Text { text: trigLSlider.value + "%"; color: Theme.text
@@ -155,17 +155,17 @@ Item {
                     }
                     PillButton {
                         objectName: "testLeftTrigger"
-                        label: "Test left trigger"
+                        label: I18n.t("Test left trigger")
                         enabled: bridge.configClaimed && !page.testRunning && trigLSlider.value > 0
                         onClicked: page.testMotor("left_trigger", trigLSlider.value)
                     }
                     Row {
                         spacing: 16
-                        Row { spacing: 6; Text { text: "Force"; color: Theme.textDim }
+                        Row { spacing: 6; Text { text: I18n.t("Force"); color: Theme.textDim }
                             ToggleSwitch { checked: page.forceL
                                 onToggled: { page.forceL = checked
                                              bridge.setG7Extra("vib_force_l", checked ? 1 : 0) } } }
-                        Row { spacing: 6; Text { text: "Sync"; color: Theme.textDim }
+                        Row { spacing: 6; Text { text: I18n.t("Sync"); color: Theme.textDim }
                             ToggleSwitch { checked: page.syncL
                                 onToggled: { page.syncL = checked
                                              bridge.setG7Extra("vib_sync_l", checked ? 1 : 0) } } }
@@ -175,7 +175,7 @@ Item {
                     width: parent.width; spacing: 6
                     Row {
                         width: parent.width
-                        Text { text: "Right trigger"; color: Theme.textDim
+                        Text { text: I18n.t("Right trigger"); color: Theme.textDim
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         Item { width: parent.width - 130; height: 1 }
                         Text { text: trigRSlider.value + "%"; color: Theme.text
@@ -187,17 +187,17 @@ Item {
                     }
                     PillButton {
                         objectName: "testRightTrigger"
-                        label: "Test right trigger"
+                        label: I18n.t("Test right trigger")
                         enabled: bridge.configClaimed && !page.testRunning && trigRSlider.value > 0
                         onClicked: page.testMotor("right_trigger", trigRSlider.value)
                     }
                     Row {
                         spacing: 16
-                        Row { spacing: 6; Text { text: "Force"; color: Theme.textDim }
+                        Row { spacing: 6; Text { text: I18n.t("Force"); color: Theme.textDim }
                             ToggleSwitch { checked: page.forceR
                                 onToggled: { page.forceR = checked
                                              bridge.setG7Extra("vib_force_r", checked ? 1 : 0) } } }
-                        Row { spacing: 6; Text { text: "Sync"; color: Theme.textDim }
+                        Row { spacing: 6; Text { text: I18n.t("Sync"); color: Theme.textDim }
                             ToggleSwitch { checked: page.syncR
                                 onToggled: { page.syncR = checked
                                              bridge.setG7Extra("vib_sync_r", checked ? 1 : 0) } } }

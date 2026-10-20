@@ -81,7 +81,7 @@ Item {
     // ---- typable ends ----
     component NumberBox: Row {
         id: nb
-        property string label: ""
+        property string label: I18n.t("")
         property real value: 0
         signal committed(real v)
         spacing: 6
@@ -129,7 +129,7 @@ Item {
         visible: r.showInputs
         anchors.top: trackArea.bottom; anchors.topMargin: 8
         width: parent.width; height: 24
-        NumberBox { anchors.left: parent.left; label: "Min"; value: r.lo; onCommitted: (v) => r.setLo(v) }
-        NumberBox { anchors.right: parent.right; label: "Max"; value: r.hi; onCommitted: (v) => r.setHi(v) }
+        NumberBox { anchors.left: parent.left; label: I18n.t("Min"); value: r.lo; onCommitted: (v) => r.setLo(v) }
+        NumberBox { anchors.right: parent.right; label: I18n.t("Max"); value: r.hi; onCommitted: (v) => r.setHi(v) }
     }
 }

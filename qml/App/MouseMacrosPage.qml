@@ -212,16 +212,16 @@ Item {
 
                 // -------- LEFT: sequence + Add event / Record --------
                 Card {
-                    title: "Sequence"
+                    title: I18n.t("Sequence")
                     headerValue: page.steps.length + " step" + (page.steps.length === 1 ? "" : "s")
                     Layout.preferredWidth: 360; Layout.minimumWidth: 300; Layout.alignment: Qt.AlignTop
                     // pinned above the list so they stay put as steps are added
                     Row {
                         width: parent.width; spacing: 6; bottomPadding: 2
-                        PillButton { label: "+ Add event"; onClicked: page.addEvent() }
-                        PillButton { label: "⏺ Record"; highlight: page.recording; onClicked: page.startRecord() }
+                        PillButton { label: I18n.t("+ Add event"); onClicked: page.addEvent() }
+                        PillButton { label: I18n.t("⏺ Record"); highlight: page.recording; onClicked: page.startRecord() }
                         PillButton {
-                            label: "Speed " + page.speedLabel(page.speed)
+                            label: I18n.t("Speed ") + page.speedLabel(page.speed)
                             highlight: page.speed !== 1.0
                             onClicked: page.cycleSpeed()
                         }
@@ -229,7 +229,7 @@ Item {
                     Text {
                         visible: page.steps.length === 0
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: "Empty — + Add event, then pick what it does on the right (or ⏺ Record)."
+                        text: I18n.t("Empty — + Add event, then pick what it does on the right (or ⏺ Record).")
                         color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                     }
                     ListView {
@@ -294,7 +294,7 @@ Item {
 
                     // dense grouped button picker; Repeat toggle sits in the header
                     Card {
-                        title: "Button"
+                        title: I18n.t("Button")
                         Layout.fillWidth: true
                         spacing: 5
                         headerValue: (mouse.macroSlotsFree >= 0 ? mouse.macroSlotsFree + " slots free" : "")
@@ -302,7 +302,7 @@ Item {
                         headerRight: Component {
                             Row {
                                 spacing: 8
-                                Text { text: "Repeat while held"; color: Theme.textDim
+                                Text { text: I18n.t("Repeat while held"); color: Theme.textDim
                                        anchors.verticalCenter: parent.verticalCenter
                                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                                 ToggleSwitch {
@@ -348,7 +348,7 @@ Item {
                             width: parent.width; spacing: 8; topPadding: 4
                             visible: mouse.macroSlotsFree >= 0
                             PillButton {
-                                label: "♻ Free unused slots"
+                                label: I18n.t("♻ Free unused slots")
                                 enabled: !mouse.busy
                                 onClicked: mouse.reclaimSlots()
                             }
@@ -356,7 +356,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width - 160
                                 wrapMode: Text.WordWrap
-                                text: "Blanks stored macros nothing points at (edits leave orphans behind)."
+                                text: I18n.t("Blanks stored macros nothing points at (edits leave orphans behind).")
                                 color: Theme.textFaint
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                             }
@@ -391,7 +391,7 @@ Item {
                             // ---- target, per type ----
                             Row {   // Key -> opens the keyboard popout (keeps the panel clean)
                                 width: parent.width; spacing: 10; visible: page.curType === "key"
-                                Text { text: "Key"; color: Theme.textDim; width: 92
+                                Text { text: I18n.t("Key"); color: Theme.textDim; width: 92
                                        anchors.verticalCenter: parent.verticalCenter
                                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                                 PillButton {
@@ -438,8 +438,8 @@ Item {
                             QQC.TextField {  // Text
                                 visible: page.curType === "text"
                                 width: parent.width
-                                text: page.curType === "text" ? page.steps[page.sel].text : ""
-                                placeholderText: "text to type…"
+                                text: page.curType === "text" ? page.steps[page.sel].text: I18n.t("")
+                                placeholderText: I18n.t("text to type…")
                                 color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                                 background: Rectangle { color: Theme.bg; radius: 6; border.color: Theme.cardBorder; border.width: 1 }
                                 onEditingFinished: page.setField(page.sel, "text", text)
@@ -449,7 +449,7 @@ Item {
                             Row {
                                 width: parent.width; spacing: 10; topPadding: 4
                                 visible: page.selTimed
-                                Text { text: "During (hold)"; color: Theme.textDim; width: 92
+                                Text { text: I18n.t("During (hold)"); color: Theme.textDim; width: 92
                                        anchors.verticalCenter: parent.verticalCenter
                                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                                 AccentSlider {
@@ -466,7 +466,7 @@ Item {
                             }
                             Row {
                                 width: parent.width; spacing: 10
-                                Text { text: "Between (delay)"; color: Theme.textDim; width: 92
+                                Text { text: I18n.t("Between (delay)"); color: Theme.textDim; width: 92
                                        anchors.verticalCenter: parent.verticalCenter
                                        font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                                 AccentSlider {
@@ -484,12 +484,12 @@ Item {
                             // ---- step tools ----
                             Flow {
                                 width: parent.width; spacing: 6; topPadding: 4
-                                PillButton { label: "Duplicate"; onClicked: page.duplicate() }
-                                PillButton { label: "Copy"; onClicked: page.copyStep() }
-                                PillButton { label: "Paste"; enabled: page.clip !== null; onClicked: page.pasteStep() }
-                                PillButton { label: "Move ▲"; enabled: page.sel > 0; onClicked: page.move(-1) }
-                                PillButton { label: "Move ▼"; enabled: page.sel >= 0 && page.sel < page.steps.length - 1; onClicked: page.move(1) }
-                                PillButton { label: "Remove"; onClicked: page.removeStep(page.sel) }
+                                PillButton { label: I18n.t("Duplicate"); onClicked: page.duplicate() }
+                                PillButton { label: I18n.t("Copy"); onClicked: page.copyStep() }
+                                PillButton { label: I18n.t("Paste"); enabled: page.clip !== null; onClicked: page.pasteStep() }
+                                PillButton { label: I18n.t("Move ▲"); enabled: page.sel > 0; onClicked: page.move(-1) }
+                                PillButton { label: I18n.t("Move ▼"); enabled: page.sel >= 0 && page.sel < page.steps.length - 1; onClicked: page.move(1) }
+                                PillButton { label: I18n.t("Remove"); onClicked: page.removeStep(page.sel) }
                             }
                         }
                     }
@@ -507,7 +507,7 @@ Item {
         background: Rectangle { color: Theme.card; border.color: Theme.cardBorder; border.width: 1; radius: Theme.radius }
         contentItem: Column {
             spacing: 10
-            Text { text: "Choose a key"; color: Theme.text; font.family: Theme.fontFamily
+            Text { text: I18n.t("Choose a key"); color: Theme.text; font.family: Theme.fontFamily
                    font.pixelSize: Theme.fontL; font.weight: Font.DemiBold }
             KeyGrid { onPicked: function (combo) { page.setField(page.sel, "combo", combo); kbPop.close() } }
         }
@@ -532,7 +532,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 SequentialAnimation on opacity { loops: Animation.Infinite
                                     NumberAnimation { to: 0.3; duration: 500 } NumberAnimation { to: 1; duration: 500 } } }
-                    Text { text: "Recording keystrokes"; color: Theme.text
+                    Text { text: I18n.t("Recording keystrokes"); color: Theme.text
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontL; font.weight: Font.DemiBold }
                 }
                 Text {
@@ -542,11 +542,11 @@ Item {
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Press keys to add them. Modifiers chord onto the next key."
+                    text: I18n.t("Press keys to add them. Modifiers chord onto the next key.")
                     color: Theme.textFaint; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                 }
                 PillButton { anchors.horizontalCenter: parent.horizontalCenter
-                             label: "■ Stop (Esc)"; highlight: true; onClicked: page.stopRecord() }
+                             label: I18n.t("■ Stop (Esc)"); highlight: true; onClicked: page.stopRecord() }
             }
         }
     }

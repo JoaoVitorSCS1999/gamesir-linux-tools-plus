@@ -5,7 +5,7 @@ import QtQuick
 // drawn below the badge; give the hosting bar a high z so it floats over siblings.
 Item {
     id: help
-    property string text: ""
+    property string text: I18n.t("")
     property int bubbleWidth: 260
     // Which side the bubble hugs: by default its right edge aligns with the badge
     // (good near the right of a bar). Set false to align the left edge instead.
@@ -22,7 +22,7 @@ Item {
         Behavior on color { ColorAnimation { duration: 120 } }
         Text {
             anchors.centerIn: parent
-            text: "?"
+            text: I18n.t("?")
             color: hov.hovered ? Theme.textOnAccent : Theme.textDim
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontS

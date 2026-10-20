@@ -161,8 +161,8 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.preferredWidth: 1; spacing: 12
                     Card {
-                        title: "Activation"; Layout.fillWidth: true
-                        Text { text: "Method"; color: Theme.textDim
+                        title: I18n.t("Activation"); Layout.fillWidth: true
+                        Text { text: I18n.t("Method"); color: Theme.textDim
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         Flow {
                             width: parent.width; spacing: 8
@@ -204,7 +204,7 @@ Item {
                     }
 
                     Card {
-                        title: "Output"; Layout.fillWidth: true
+                        title: I18n.t("Output"); Layout.fillWidth: true
                         Flow {
                             width: parent.width; spacing: 8
                             Repeater {
@@ -220,7 +220,7 @@ Item {
                         }
                         Row {
                             width: parent.width; topPadding: 6; visible: bridge.motionHasSens
-                            Text { text: "Sensitivity"; color: Theme.textDim
+                            Text { text: I18n.t("Sensitivity"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Item { width: parent.width - 130; height: 1 }
                             Text { text: sensSlider.value + "%"; color: Theme.text
@@ -233,7 +233,7 @@ Item {
                         }
                         RowLayout {
                             width: parent.width; visible: page.rangeSensitivityVisible
-                            Text { text: "Sensitivity (input range)"; color: Theme.textDim
+                            Text { text: I18n.t("Sensitivity (input range)"); color: Theme.textDim
                                    Layout.fillWidth: true
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Text { text: page.rangeSensitivity > 0
@@ -253,17 +253,17 @@ Item {
                         }
                         Text {
                             width: parent.width; visible: page.rangeSensitivityVisible
-                            text: "Higher = stronger stick response. Adjusts the upper input limit; "
+                            text: I18n.t("Higher = stronger stick response. Adjusts the upper input limit; ")
                                   + "1× uses the full input range. Save to Profile to apply."
                             wrapMode: Text.WordWrap
                             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         Row {
                             width: parent.width; topPadding: 4
-                            Text { text: "Horizontal"; color: Theme.textDim
+                            Text { text: I18n.t("Horizontal"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Item { width: parent.width - 150; height: 1 }
-                            Text { text: "Vertical"; color: Theme.textDim
+                            Text { text: I18n.t("Vertical"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         }
                         AccentSlider {
@@ -271,7 +271,7 @@ Item {
                             onMoved: page.setVal("xy_scale", value)
                         }
                         Text {
-                            width: parent.width; text: "X / Y sensitivity balance"
+                            width: parent.width; text: I18n.t("X / Y sensitivity balance")
                             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -284,7 +284,7 @@ Item {
                         visible: page.cur.output === 2 && bridge.motionHasDirMacros
                         Text {
                             visible: bridge.motionHasOverlap
-                            text: "Overlap area: " + overlapSlider.value + "%"
+                            text: I18n.t("Overlap area: ") + overlapSlider.value + "%"
                             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         AccentSlider {
@@ -307,7 +307,7 @@ Item {
                                 }
                                 Text {
                                     visible: page.dirLabel(modelData.i) !== "—"
-                                    text: "✕"; color: Theme.textDim
+                                    text: I18n.t("✕"); color: Theme.textDim
                                     anchors.verticalCenter: parent.verticalCenter
                                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                                     TapHandler { onTapped: page.setDir(modelData.i, -1) }
@@ -325,8 +325,8 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true; Layout.preferredWidth: 1; spacing: 12
                     Card {
-                        title: "Rotation Axis"; Layout.fillWidth: true
-                        Text { text: "X-axis output"; color: Theme.textDim
+                        title: I18n.t("Rotation Axis"); Layout.fillWidth: true
+                        Text { text: I18n.t("X-axis output"); color: Theme.textDim
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         Flow {
                             width: parent.width; spacing: 8
@@ -366,10 +366,10 @@ Item {
                     }
 
                     Card {
-                        title: "Deadzone & Response"; Layout.fillWidth: true
+                        title: I18n.t("Deadzone & Response"); Layout.fillWidth: true
                         Row {
                             width: parent.width
-                            Text { text: "Deadzone"; color: Theme.textDim
+                            Text { text: I18n.t("Deadzone"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Item { width: parent.width - 160; height: 1 }
                             Text { text: dzRange.lo + "–" + dzRange.hi + "%"; color: Theme.text
@@ -387,7 +387,7 @@ Item {
                         }
                         Row {
                             width: parent.width; topPadding: 4
-                            Text { text: "Anti-deadzone"; color: Theme.textDim
+                            Text { text: I18n.t("Anti-deadzone"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Item { width: parent.width - 160; height: 1 }
                             Text { text: adzRange.lo + "–" + adzRange.hi + "%"; color: Theme.text
@@ -402,7 +402,7 @@ Item {
                                 bridge.setMotionDeadzone(page.section, "adz_max", hi)
                             }
                         }
-                        Text { text: "Response curve"; color: Theme.textDim; topPadding: 6
+                        Text { text: I18n.t("Response curve"); color: Theme.textDim; topPadding: 6
                                font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                         Flow {
                             width: parent.width; spacing: 8
@@ -420,13 +420,13 @@ Item {
                         Text {
                             width: parent.width; wrapMode: Text.WordWrap
                             visible: bridge.isG7Pro && page.cur.curve_type === 3
-                            text: "Custom uses the curve points already stored in this profile."
+                            text: I18n.t("Custom uses the curve points already stored in this profile.")
                             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
                         Row {
                             width: parent.width; topPadding: 4
                             visible: bridge.motionHasCurveStrength && (page.cur.curve_type === 1 || page.cur.curve_type === 2)
-                            Text { text: "Curve strength"; color: Theme.textDim
+                            Text { text: I18n.t("Curve strength"); color: Theme.textDim
                                    font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                             Item { width: parent.width - 130; height: 1 }
                             Text { text: curveIntSlider.value + "%"; color: Theme.text

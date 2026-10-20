@@ -8,7 +8,7 @@ import QtQuick
 // off; a state toggle filled with accent reads as one more selected option.
 Rectangle {
     id: b
-    property string label: ""
+    property string label: I18n.t("")
     property bool highlight: false
     property color statusDot: "transparent"     // e.g. Theme.warn; transparent = none
     signal clicked()

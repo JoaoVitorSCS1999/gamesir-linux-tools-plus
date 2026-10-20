@@ -5,6 +5,12 @@ and Logitech mice — newest first. This is the
 curated, user-facing summary; the complete history is in git. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com).
 
+## [Unreleased]
+
+### Added
+- Interface language selection with English fallback and Brazilian Portuguese,
+  Japanese, Spanish, Russian, Simplified Chinese, Korean, Hindi, German, and Polish.
+
 ## [0.8.2] — 2026-10-19
 
 ### Added

@@ -59,7 +59,7 @@ Item {
         Text {                             // close ✕
             anchors.top: parent.top; anchors.topMargin: 12
             anchors.right: parent.right; anchors.rightMargin: 14
-            text: "✕"; color: Theme.textDim; font.pixelSize: Theme.fontM
+            text: I18n.t("✕"); color: Theme.textDim; font.pixelSize: Theme.fontM
             TapHandler { onTapped: kp.close() }
         }
 
@@ -73,7 +73,7 @@ Item {
                 spacing: 8
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "Assign a key"; color: Theme.text
+                    text: I18n.t("Assign a key"); color: Theme.text
                     font.family: Theme.fontFamily; font.pixelSize: Theme.fontL; font.weight: Font.DemiBold
                 }
                 Item { width: 14; height: 1 }

@@ -23,19 +23,19 @@ ColumnLayout {
     }
     Card {
         visible: mouse.permission === "no-access"
-        title: "Grant access (one-time)"
+        title: I18n.t("Grant access (one-time)")
         Layout.fillWidth: true
         Text {
             width: parent.width; wrapMode: Text.WrapAnywhere
             color: Theme.textDim; font.family: "monospace"; font.pixelSize: Theme.fontS
-            text: "sudo cp packaging/udev/70-deadband-g502x.rules /etc/udev/rules.d/\n"
+            text: I18n.t("sudo cp packaging/udev/70-deadband-g502x.rules /etc/udev/rules.d/\n")
                 + "sudo udevadm control --reload && sudo udevadm trigger"
         }
         Text {
             width: parent.width; wrapMode: Text.WordWrap; topPadding: 6
             color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
-            text: "…then replug the mouse. If ratbagd holds the device, stop it first."
+            text: I18n.t("…then replug the mouse. If ratbagd holds the device, stop it first.")
         }
     }
-    PillButton { Layout.alignment: Qt.AlignHCenter; label: "Retry"; onClicked: mouse.refresh() }
+    PillButton { Layout.alignment: Qt.AlignHCenter; label: I18n.t("Retry"); onClicked: mouse.refresh() }
 }

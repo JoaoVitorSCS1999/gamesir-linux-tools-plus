@@ -87,7 +87,7 @@ Item {
                 spacing: 14
 
                 Card {
-                    title: "Button Mapping"
+                    title: I18n.t("Button Mapping")
                     Layout.fillWidth: true; Layout.fillHeight: true
                     Grid {
                         width: parent.width; columns: 2; spacing: 6
@@ -138,7 +138,7 @@ Item {
                     Card {
                         visible: bridge.remapOnly
                         width: parent.width
-                        title: "Live input"
+                        title: I18n.t("Live input")
                         Grid {
                             width: parent.width
                             columns: 2; spacing: 8
@@ -177,7 +177,7 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
-                                text: "→"; color: Theme.textDim
+                                text: I18n.t("→"); color: Theme.textDim
                                 font.family: Theme.fontFamily; font.pixelSize: Theme.fontM
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -219,11 +219,11 @@ Item {
 
                 Card {
                     visible: bridge.hasContinuousTrigger
-                    title: "Continuous Trigger"; Layout.fillWidth: true
+                    title: I18n.t("Continuous Trigger"); Layout.fillWidth: true
                     RowLayout {
                         width: parent.width
                         Text {
-                            text: "Tap to hold / release"
+                            text: I18n.t("Tap to hold / release")
                             Layout.fillWidth: true; wrapMode: Text.WordWrap
                             color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
                         }
@@ -254,11 +254,11 @@ Item {
                 }
 
                 Card {
-                    title: "Assign — " + page.sel; Layout.fillWidth: true
+                    title: I18n.t("Assign — ") + page.sel; Layout.fillWidth: true
                     Flow {
                         width: parent.width; spacing: 6
                         PillButton {
-                            label: "Default"
+                            label: I18n.t("Default")
                             highlight: page.targetCode(page.sel) < 0
                             onClicked: page.assignCode(page.sel, -1)
                         }
@@ -272,21 +272,21 @@ Item {
                             }
                         }
                     }
-                    Text { visible: !bridge.remapOnly; text: "Keyboard & mouse"; color: Theme.textDim; topPadding: 6
+                    Text { visible: !bridge.remapOnly; text: I18n.t("Keyboard & mouse"); color: Theme.textDim; topPadding: 6
                            font.family: Theme.fontFamily; font.pixelSize: Theme.fontS }
                     Flow {
                         visible: !bridge.remapOnly
                         width: parent.width; spacing: 6
-                        PillButton { label: "⌨ Keyboard"; onClicked: rebindPicker.open("keyboard") }
-                        PillButton { label: "🖱 Mouse";    onClicked: rebindPicker.open("mouse") }
+                        PillButton { label: I18n.t("⌨ Keyboard"); onClicked: rebindPicker.open("keyboard") }
+                        PillButton { label: I18n.t("🖱 Mouse");    onClicked: rebindPicker.open("mouse") }
                     }
                 }
 
                 Card {
-                    visible: bridge.isG7Pro; title: "D-pad options"; Layout.fillWidth: true
+                    visible: bridge.isG7Pro; title: I18n.t("D-pad options"); Layout.fillWidth: true
                     Row {
                         width: parent.width
-                        Text { text: "Swap left stick / D-pad"; color: Theme.textDim }
+                        Text { text: I18n.t("Swap left stick / D-pad"); color: Theme.textDim }
                         Item { width: parent.width - 190; height: 1 }
                         ToggleSwitch { checked: page.dpadSwap
                             onToggled: { page.dpadSwap = checked
@@ -294,7 +294,7 @@ Item {
                     }
                     Row {
                         width: parent.width
-                        Text { text: "Diagonal lock"; color: Theme.textDim }
+                        Text { text: I18n.t("Diagonal lock"); color: Theme.textDim }
                         Item { width: parent.width - 120; height: 1 }
                         ToggleSwitch { checked: page.dpadLock
                             onToggled: { page.dpadLock = checked

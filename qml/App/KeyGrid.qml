@@ -61,7 +61,7 @@ Column {
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            text: "chord onto the next key"; color: Theme.textFaint
+            text: I18n.t("chord onto the next key"); color: Theme.textFaint
             font.family: Theme.fontFamily; font.pixelSize: Theme.fontS
         }
     }
