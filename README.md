@@ -24,8 +24,9 @@ The configurable models offer:
   Cyclone 2 and two (left/right) on the Kaleid. The Cyclone 2 adds
   audio-reactive / pick-up-to-wake / sleep timeout. On the **G7 Pro 8K**: ring
   effect and brightness, home-ring quadrant colours, sleep timer and dock light.
-  Lighting edits wait for Save; picking a lighting profile and Restore default
-  lighting act straight away.
+  Changing a colour applies it to the controller automatically. Presets,
+  brightness/speed, and power settings remain staged for Save; picking a lighting
+  profile and Restore default lighting act straight away.
 - **Config editor** — deadzones and anti-deadzones (drag, or type exact values),
   stick trajectory, sensitivity curves (presets **and** a draggable custom-curve
   editor), trigger tuning (hair-trigger + response curve), vibration with

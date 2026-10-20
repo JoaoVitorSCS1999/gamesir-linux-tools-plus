@@ -151,6 +151,7 @@ class GamesirBridge(QObject):
     backupBusyChanged = Signal()
     backupProgress = Signal(int, int)   # done, total
     backupStatus = Signal(bool, str)    # ok, message
+    _lightingApplyRequested = Signal()  # coalesce colour edits made during a write
     rumbleTestStatus = Signal(bool, str)
     fwProgress = Signal(str)            # phase text (Entering loader / Writing / …)
     fwVersionsChanged = Signal()        # library changed (e.g. after a backup)
@@ -185,13 +186,12 @@ class GamesirBridge(QObject):
         self._sleep_label = '10 min'
         self._loaded_frames = []        # list of frames, each = 4 hex strings
 
-        # Lighting is STAGED like every other page: an edit becomes a pending
-        # entry keyed ('light', addr) against the bytes last read from the pad,
-        # and Save writes it through the same verified path. _light_loaded holds
-        # those read-back bytes (bank 0x20 addr -> list). _light_keys is the set
-        # of lighting entries pending at the last look, so anything that clears
-        # them (Discard, a profile reload, a device switch) puts the page back to
-        # what the pad holds -- see _on_pending_changed.
+        # Lighting edits are staged against the bytes last read from the pad.
+        # Color edits are selectively auto-applied through the verified write path;
+        # other lighting settings remain pending for Save. _light_loaded holds
+        # read-back bytes (bank 0x20 addr -> list). _light_keys tracks pending
+        # lighting entries so a discard, reload, or device switch restores the
+        # page to what the pad holds -- see _on_pending_changed.
         self._light_loaded = {}
         self._light_keys = set()
         self._led_rec_slot = None       # slot whose record _light_loaded holds
@@ -210,10 +210,12 @@ class GamesirBridge(QObject):
         self._diag_busy = False
         self._diagDone.connect(self._on_diag_done)
         self._backup_busy = False
+        self._lighting_apply_requested = False
+        self._lightingApplyRequested.connect(self.applyLighting)
         self.pendingChanged.connect(self._on_pending_changed)
 
         # 8K simple lighting (bank 0x20). Loaded once per connection and again
-        # after a Save; edits are staged like the Cyclone's (see _light_loaded).
+        # after a Save; edits use the same staging cache as the Cyclone.
         self._l8 = {}
         self._l8_loaded = False
         self._l8_loading = False
@@ -541,8 +543,8 @@ class GamesirBridge(QObject):
             self.pendingChanged.emit()
 
     def _stage_light(self, addr, data, label, display):
-        """Stage bank-0x20 bytes at `addr` for Save. Lands back on the pad's value
-        = no change (the entry is dropped), so the badge counts real edits only."""
+        """Stage bank-0x20 bytes against read-back. A value equal to the pad is
+        dropped, so pending state only counts real edits."""
         if not profiles.is_recognized():
             return False
         base = self._light_loaded.get(addr)
@@ -1533,7 +1535,7 @@ class GamesirBridge(QObject):
     def loadedFrames(self):
         return [list(f) for f in self._loaded_frames]
 
-    # --- lighting edits: staged for Save, like every other page --------------
+    # --- lighting edits: staged against read-back, then selectively applied --
     def _staged_record(self):
         slot = self._led_rec_slot
         if slot is None or not _keyframe_lighting():
@@ -1712,6 +1714,7 @@ class GamesirBridge(QObject):
         for i in idxs:
             self._stage8k(led8k.HOME_Q[i], block, f'Home ring quadrant {i + 1}',
                           f'hue {hue}°, saturation {sat}%')
+        self.applyLighting()
 
     @Slot(bool)
     def setLight8kAuto(self, on):
@@ -2153,6 +2156,7 @@ class GamesirBridge(QObject):
         if self._stage_record(rec):
             kf_cache.save(self._led_rec_slot, norm, len(norm))
             self.lightsChanged.emit()
+            self.applyLighting()
 
     @Slot(bool, int)
     def setPlayback(self, playing, frame):
@@ -2753,7 +2757,15 @@ class GamesirBridge(QObject):
         self._pending = {}
         self.pendingChanged.emit()
 
-    def _apply_transactional(self):
+    @Slot()
+    def applyLighting(self):
+        """Immediately write staged color edits without applying other pages."""
+        if self._backup_busy:
+            self._lighting_apply_requested = True
+            return
+        self._apply_transactional(lighting_only=True)
+
+    def _apply_transactional(self, lighting_only=False):
         if self._backup_busy or not self._pending:
             return
         if self._prof is profiles.G7_SE and not g7se.CONFIGURATION_VERIFIED:
@@ -2765,8 +2777,25 @@ class GamesirBridge(QObject):
                 or state.get('driving') != state.get('selected')):
             self._set_apply_status('Apply refused: controller selection changed; reload its settings')
             return
-        snapshot_pending = copy.deepcopy(self._pending)
-        snapshot_motion = copy.deepcopy(self._m) if self._m_dirty else None
+        if lighting_only:
+            if self._is_8k_lighting():
+                auto_addresses = set(led8k.HOME_Q)
+            elif _keyframe_lighting() and self._led_rec_slot is not None:
+                auto_addresses = {led.record_addr(self._led_rec_slot)}
+            else:
+                auto_addresses = set()
+        else:
+            auto_addresses = None
+        snapshot_pending = {
+            key: copy.deepcopy(record) for key, record in self._pending.items()
+            if not lighting_only or (
+                record.get('kind') == 'lighting'
+                and record['addr'] in auto_addresses)
+        }
+        if not snapshot_pending:
+            return
+        snapshot_motion = (copy.deepcopy(self._m)
+                           if self._m_dirty and not lighting_only else None)
         changes = [(r['bank'], r['addr'], list(r['data'])) for r in snapshot_pending.values()]
         try:
             for r in snapshot_pending.values():
@@ -2892,10 +2921,11 @@ class GamesirBridge(QObject):
                     if snapshot_motion is not None:
                         self._m_loaded = snapshot_motion
                         self._m_dirty = self._m != snapshot_motion
-                    self._m_init = {}
+                    if not lighting_only:
+                        self._m_init = {}
                     # A fresh poll discards pending edits. Defer it if the user
                     # staged another edit while this batch was being applied.
-                    if not self._pending:
+                    if not lighting_only and not self._pending:
                         self._loaded_profile = None
                         self._config_loading = None
                 if prof is profiles.G7_SE and any(r.get('kind') == 'se_rate'
@@ -2920,6 +2950,9 @@ class GamesirBridge(QObject):
                                                f'be on another profile; switch back to {original_profile}')
                 self._backup_busy = False
                 self.backupBusyChanged.emit()
+                if self._lighting_apply_requested:
+                    self._lighting_apply_requested = False
+                    self._lightingApplyRequested.emit()
         threading.Thread(target=run, daemon=True).start()
 
     def _set_apply_status(self, msg):

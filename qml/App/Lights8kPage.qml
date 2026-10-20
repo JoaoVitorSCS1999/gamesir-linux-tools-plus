@@ -5,7 +5,8 @@ import App 1.0
 
 // GameSir G7 Pro 8K lighting + device settings (bank 0x20). Not the Cyclone's
 // keyframe RGB — a single ring effect + brightness, a 4-quadrant home indicator,
-// and power/dock settings. Edits are staged for the Save bar, like every page.
+// and power/dock settings. Home-ring color edits apply automatically; other
+// settings remain staged for the Save bar.
 Item {
     id: page
 
@@ -24,6 +25,7 @@ Item {
     property var quads: [[60, 100], [60, 100], [60, 100], [60, 100]]   // [hue, byte1]
 
     function seed() {
+        writeTimer.stop()
         curMode = bridge.light8kMode
         curSleep = bridge.light8kSleep
         curDock = bridge.light8kDockMode

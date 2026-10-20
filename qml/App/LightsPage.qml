@@ -5,9 +5,8 @@ import QtQuick.Layouts
 // The Lights tab: per-zone color editing wired live to the controller render,
 // effect presets, brightness/speed, a keyframe animation editor, and the global
 // power settings. Every edit is STAGED like the other pages: the render and the
-// page show it at once, the Save bar counts it, and nothing reaches the pad until
-// Save. The lighting-profile pills and Play/Pause act immediately (they choose
-// what's shown, they don't change a setting), as does the confirmed Restore.
+// page show it at once. Color edits apply automatically; other lighting settings
+// remain staged for Save. Profile selection and Play/Pause act immediately too.
 Item {
     id: page
 
@@ -34,6 +33,7 @@ Item {
     // Pull the page in line with the controller's real lighting state. Runs at
     // startup and whenever the bridge reads a new active slot back.
     function syncFromBridge() {
+        stageTimer.stop()
         frames = bridge.loadedFrames.length > 0 ? bridge.loadedFrames
                                                 : [bridge.lightColors.slice()]
         curFrame = 0
@@ -69,7 +69,7 @@ Item {
         frames[curFrame][sel] = hex
         stageTimer.restart()
     }
-    // A colour drag fires many edits; stage the frames once it settles.
+    // A colour drag fires many edits; debounce the verified write until it settles.
     Timer { id: stageTimer; interval: 60; onTriggered: page.stageAnimation() }
     function loadFrame(i) {
         for (var z = 0; z < page.nZones; z++) bridge.setLight(z, frames[i][z])
@@ -384,7 +384,7 @@ Item {
                 }
                 Text {
                     width: parent.width
-                    text: page.frames.length + " / 8 keyframes — edit zone colors per frame"
+                    text: page.frames.length + " / 8 keyframes — color changes apply automatically"
                     color: Theme.textFaint; font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontS; wrapMode: Text.WordWrap
                 }

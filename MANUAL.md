@@ -50,12 +50,14 @@ to edit without changing the profile currently active on the controller.
   viewing). Your exact keyframes are remembered per slot, so switching profiles and
   back restores them precisely.
 
-Lighting edits are staged in the pending bar like every other setting, and reach the
-controller when you **Save**; the render previews them in the meantime. The preset
-that's on the controller is highlighted. Choosing a **lighting profile** (1–4),
-Play / Pause, and the confirmed **Restore default lighting** act straight away.
-Lighting is shared across the hardware profiles, so switching hardware profile keeps
-staged lighting edits.
+Changing a colour in the picker applies it to the controller automatically; on the
+Cyclone/Kaleid this also applies edits to the selected keyframe. The G7 Pro 8K's
+home-ring colours behave the same way. Presets, brightness/speed, and power settings
+remain staged in the pending bar until you **Save**. The preset that's on the
+controller is highlighted. Choosing a **lighting profile** (1–4), Play / Pause, and
+the confirmed **Restore default lighting** act straight away. Lighting is shared
+across the hardware profiles, so switching hardware profile keeps staged lighting
+settings.
 
 ### Config editor
 
